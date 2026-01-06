@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materials - Smart Up</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container header-container materials-header">
+            <div class="logo">Smart Up</div>
+            <div class="user-chip" id="userChip">
+                <span class="user-email">user@example.com</span>
+                <span class="user-role-pill" id="userRolePill">Role</span>
+            </div>
+            <button class="logout-btn" type="button">Logout</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="materials-layout">
+            <div class="container materials-container">
+                <!-- Left column: filters / course selector -->
+                <aside class="materials-sidebar">
+                    <h2 class="materials-title">Study Materials</h2>
+                    <p class="materials-subtitle">
+                        Choose a course to see the materials shared for you.
+                    </p>
+
+                    <label class="field-label" for="courseSelect">Course</label>
+                    <select id="courseSelect" class="materials-select">
+                        <option value="">Select course</option>
+                        <option value="math101">Math 101</option>
+                        <option value="physics201">Physics 201</option>
+                        <option value="chemistry101">Chemistry 101</option>
+                    </select>
+
+                    <label class="field-label" for="searchMaterials">Search</label>
+                    <input
+                        id="searchMaterials"
+                        class="materials-input"
+                        type="text"
+                        placeholder="Search material..."
+                    >
+                </aside>
+
+                <!-- Right column: role-specific panels -->
+                <section class="materials-main">
+                    <!-- Student download panel -->
+                    <div class="role-panel role-student" id="studentPanel">
+                        <h3 class="panel-title">Available materials</h3>
+                        <p class="panel-subtitle">
+                            Browse and download the resources shared by your tutors.
+                        </p>
+
+                        <div class="materials-list">
+                            <article class="material-card">
+                                <h4 class="material-title">Week 1 Lecture Notes</h4>
+                                <p class="material-desc">
+                                    Slides covering the introduction and overview of the course.
+                                </p>
+                                <div class="material-meta">
+                                    <span>Course: Math 101</span>
+                                    <span>PDF · 2.1 MB</span>
+                                    <span>By: Dr. Brown</span>
+                                </div>
+                                <div class="material-actions">
+                                    <button type="button" class="download-btn">Download</button>
+                                    <button type="button" class="rate-btn">Rate this</button>
+                                </div>
+                            </article>
+
+                            <article class="material-card">
+                                <h4 class="material-title">Assignment 1</h4>
+                                <p class="material-desc">
+                                    First exercise set to practice the key concepts from week 1.
+                                </p>
+                                <div class="material-meta">
+                                    <span>Course: Math 101</span>
+                                    <span>DOCX · 180 KB</span>
+                                    <span>By: Dr. Brown</span>
+                                </div>
+                                <div class="material-actions">
+                                    <button type="button" class="download-btn">Download</button>
+                                    <button type="button" class="rate-btn">Rate this</button>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+
+                    <!-- Tutor upload/manage panel -->
+                    <div class="role-panel role-tutor" id="tutorPanel">
+                        <h3 class="panel-title">Upload materials</h3>
+                        <p class="panel-subtitle">
+                            Share notes, assignments and helpful resources with your students.
+                        </p>
+
+                        <form class="upload-form">
+                            <label class="field-label" for="uploadCourse">Course</label>
+                            <select id="uploadCourse" class="materials-select">
+                                <option value="">Select course</option>
+                                <option value="math101">Math 101</option>
+                                <option value="physics201">Physics 201</option>
+                                <option value="chemistry101">Chemistry 101</option>
+                            </select>
+
+                            <label class="field-label" for="materialTitle">Title</label>
+                            <input
+                                id="materialTitle"
+                                class="materials-input"
+                                type="text"
+                                placeholder="e.g. Week 1 Lecture Notes"
+                            >
+
+                            <label class="field-label" for="materialDesc">Short description</label>
+                            <textarea
+                                id="materialDesc"
+                                class="materials-textarea"
+                                rows="3"
+                                placeholder="Add a short description for your students..."
+                            ></textarea>
+
+                            <label class="field-label" for="materialFile">File</label>
+                            <input id="materialFile" class="materials-file" type="file">
+
+                            <button type="button" class="upload-btn">Upload</button>
+                        </form>
+
+                        <h4 class="panel-subtitle panel-subtitle-top">Your uploaded materials</h4>
+                        <div class="materials-table">
+                            <div class="materials-table-head">
+                                <span>Title</span>
+                                <span>Course</span>
+                                <span>Uploaded</span>
+                                <span>Downloads</span>
+                                <span>Rating</span>
+                            </div>
+                            <div class="materials-table-row">
+                                <span>Week 1 Lecture Notes</span>
+                                <span>Math 101</span>
+                                <span>12 Jan 2026</span>
+                                <span>34</span>
+                                <span>★★★★☆</span>
+                            </div>
+                            <div class="materials-table-row">
+                                <span>Assignment 1</span>
+                                <span>Math 101</span>
+                                <span>13 Jan 2026</span>
+                                <span>21</span>
+                                <span>★★★☆☆</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-container">
+            <span>&copy; 2026 Smart Up. All rights reserved.</span>
+        </div>
+    </footer>
+
+    <script>
+        // Simple role-based show/hide:
+        // Expected values: 'student' or 'tutor'
+        (function () {
+            var role = localStorage.getItem('role') || 'student';
+            var studentPanel = document.getElementById('studentPanel');
+            var tutorPanel = document.getElementById('tutorPanel');
+            var rolePill = document.getElementById('userRolePill');
+
+            if (role === 'tutor') {
+                studentPanel.style.display = 'none';
+                tutorPanel.style.display = 'block';
+                rolePill.textContent = 'Tutor';
+            } else {
+                studentPanel.style.display = 'block';
+                tutorPanel.style.display = 'none';
+                rolePill.textContent = 'Student';
+            }
+        })();
+    </script>
+</body>
+</html>
+
+

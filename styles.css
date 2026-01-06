@@ -169,3 +169,181 @@ footer {
     text-decoration: underline;
     margin-left: 6px;
 }
+
+/* Materials page */
+.materials-header {
+    align-items: center;
+    gap: 16px;
+}
+
+.user-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: #f0f0f0;
+    font-size: 0.9em;
+}
+
+.user-role-pill {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #e0e0e0;
+    font-weight: 600;
+}
+
+.logout-btn {
+    padding: 8px 18px;
+    border-radius: 24px;
+    border: none;
+    cursor: pointer;
+    background: #ececec;
+    font-weight: 600;
+}
+
+.materials-layout {
+    padding: 40px 0 60px;
+}
+
+.materials-container {
+    display: flex;
+    gap: 32px;
+}
+
+.materials-sidebar {
+    flex: 0 0 280px;
+}
+
+.materials-main {
+    flex: 1 1 auto;
+}
+
+.materials-title {
+    margin: 0 0 8px;
+}
+
+.materials-subtitle {
+    margin: 0 0 20px;
+    color: #555;
+    font-size: 0.95em;
+}
+
+.field-label {
+    display: block;
+    margin: 16px 0 6px;
+    font-size: 0.95em;
+    font-weight: 500;
+}
+
+.materials-select,
+.materials-input,
+.materials-textarea,
+.materials-file {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 0.98em;
+    box-sizing: border-box;
+}
+
+.materials-textarea {
+    resize: vertical;
+}
+
+.role-panel {
+    display: none;
+}
+
+.panel-title {
+    margin: 0 0 6px;
+}
+
+.panel-subtitle {
+    margin: 0 0 20px;
+    color: #555;
+    font-size: 0.95em;
+}
+
+.panel-subtitle-top {
+    margin-top: 32px;
+}
+
+.materials-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.material-card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.material-title {
+    margin: 0 0 6px;
+}
+
+.material-desc {
+    margin: 0 0 10px;
+    font-size: 0.95em;
+}
+
+.material-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 0.8em;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.material-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.download-btn,
+.rate-btn,
+.upload-btn {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    background: #ececec;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.upload-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.materials-table {
+    margin-top: 10px;
+    background: #ffffff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    font-size: 0.9em;
+}
+
+.materials-table-head,
+.materials-table-row {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1.2fr 1fr 1fr;
+    padding: 10px 14px;
+}
+
+.materials-table-head {
+    background: #f3f3f3;
+    font-weight: 600;
+}
+
+.materials-table-row:nth-child(odd) {
+    background: #fafafa;
+}
