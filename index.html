@@ -1,13 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Smart Up</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container header-container">
+            <div class="logo">Smart Up</div>
+            <nav>
+                <ul class="nav-list">
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">Features</a></li>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>Welcome to Smart Up</h1>
+                <p>Your gateway to smarter study materials.</p>
+                <button class="cta-btn">Get Started</button>
+            </div>
+        </section>
+        <section class="features">
+            <div class="container features-container">
+                <div class="feature-card">Feature 1<br><small>Short description</small></div>
+                <div class="feature-card">Feature 2<br><small>Short description</small></div>
+                <div class="feature-card">Feature 3<br><small>Short description</small></div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-container">
+            <span>&copy; 2026 Smart Up. All rights reserved.</span>
+        </div>
+    </footer>
+</body>
 </html>
