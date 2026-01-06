@@ -376,7 +376,7 @@ footer {
     border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    font-size: 0.9em;
+    font-size: 0.82em;
 }
 
 .materials-table-head,
@@ -391,7 +391,7 @@ footer {
 .materials-table-head {
     background: #f3f3f3;
     font-weight: 600;
-    font-size: 0.95em;
+    font-size: 0.88em;
     color: #333;
 }
 
