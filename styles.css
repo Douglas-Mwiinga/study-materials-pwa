@@ -89,10 +89,15 @@ footer {
 /* Login page */
 .login-section {
     display: flex;
-    align-items: center;
-    min-height: 80vh;
+    align-items: flex-start;
+    min-height: 70vh;
     justify-content: center;
     background: #f9f9f9;
+    margin-top: 54px;
+}
+
+.header-container {
+    margin-bottom: 36px;
 }
 .login-container {
     background: #fff;
@@ -121,12 +126,12 @@ footer {
     width: 100%;
     padding: 10px;
     border: 1px solid #ccc;
-    border-radius: 8px;
+    border-radius: 25px;
     font-size: 1em;
 }
 .login-btn {
     margin-top: 14px;
-    padding: 12px 0;
+    padding: 8px 24px;
     font-size: 1em;
     border: none;
     border-radius: 25px;
@@ -134,8 +139,11 @@ footer {
     cursor: pointer;
     font-weight: 600;
     letter-spacing: 1px;
-    width: 100%;
+    width: auto;
+    min-width: 88px;
+    align-self: center;
     transition: background 0.2s;
+    display: block;
 }
 .login-btn:hover {
     background: #dadada;
