@@ -122,12 +122,13 @@ footer {
     margin-bottom: 4px;
     font-weight: 500;
 }
-.login-form input {
+.login-form input, .login-form select {
     width: 100%;
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 25px;
     font-size: 1em;
+    background: #fafafa;
 }
 .login-btn {
     margin-top: 14px;

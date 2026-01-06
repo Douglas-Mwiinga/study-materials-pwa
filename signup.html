@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Smart Up</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container header-container">
+            <div class="logo">Smart Up</div>
+        </div>
+    </header>
+    <main>
+        <section class="login-section">
+            <div class="container login-container">
+                <h2>Create Your Account</h2>
+                <form class="login-form">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Create a password" required>
+
+                    <label for="role">User Role</label>
+                    <select id="role" name="role" required>
+                        <option value="">Select role</option>
+                        <option value="tutor">Tutor</option>
+                        <option value="student">Student</option>
+                    </select>
+
+                    <button type="submit" class="login-btn">Sign Up</button>
+                </form>
+                <p class="login-link">Already have an account? <a href="login.html">Log in</a></p>
+            </div>
+        </section>
+    </main>
+    <footer>
+        <div class="container footer-container">
+            <span>&copy; 2026 Smart Up. All rights reserved.</span>
+        </div>
+    </footer>
+</body>
+</html>
+
