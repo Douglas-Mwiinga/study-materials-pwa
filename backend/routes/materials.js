@@ -70,14 +70,22 @@ async function getUserProfile(userId) {
 router.get('/', async (req, res) => {
     try {
         const { course, search } = req.query;
-        
-        // Get user info from token (if provided)
+
+        // Require authentication for materials access
         const userId = await getUserIdFromToken(req.headers.authorization);
-        let userProfile = null;
-        
-        if (userId) {
-            const { data } = await getUserProfile(userId);
-            userProfile = data;
+        if (!userId) {
+            return res.status(401).json({
+                error: 'Unauthorized',
+                message: 'Authentication required'
+            });
+        }
+
+        const { data: userProfile, error: userProfileError } = await getUserProfile(userId);
+        if (userProfileError || !userProfile) {
+            return res.status(404).json({
+                error: 'Profile not found',
+                message: 'User profile does not exist'
+            });
         }
         
         let query = supabaseAdmin
@@ -99,14 +107,62 @@ router.get('/', async (req, res) => {
             `)
             .order('created_at', { ascending: false });
 
-        // Filter by tutorial group for students
-        if (userProfile?.role === 'student' && userProfile?.tutorial_group) {
-            query = query.eq('tutorial_group', userProfile.tutorial_group);
+        // Enforce approved access for students and filter by approved tutorial group
+        if (userProfile?.role === 'student') {
+            const { data: latestApproval, error: approvalError } = await supabaseAdmin
+                .from('student_approvals')
+                .select('status, tutorial_group_name, access_expires_at, created_at')
+                .eq('student_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (approvalError || !latestApproval) {
+                return res.status(403).json({
+                    error: 'Approval required',
+                    message: 'Your account is pending tutor approval.'
+                });
+            }
+
+            if (latestApproval.status !== 'approved') {
+                return res.status(403).json({
+                    error: 'Approval required',
+                    message: 'Your account is pending tutor approval.'
+                });
+            }
+
+            if (latestApproval.access_expires_at) {
+                const expiresAt = new Date(latestApproval.access_expires_at);
+                const now = new Date();
+                if (expiresAt < now) {
+                    return res.status(403).json({
+                        error: 'Access expired',
+                        message: 'Your access to materials has expired. Please contact your tutor.'
+                    });
+                }
+            }
+
+            const tutorialGroup = latestApproval.tutorial_group_name || userProfile.tutorial_group;
+            if (!tutorialGroup) {
+                return res.status(403).json({
+                    error: 'No tutorial group assigned',
+                    message: 'No tutorial group is assigned to your approved access.'
+                });
+            }
+
+            query = query.eq('tutorial_group', tutorialGroup);
         }
         
         // Filter by tutor_id for tutors (show only their uploads)
         if (userProfile?.role === 'tutor') {
             query = query.eq('tutor_id', userId);
+        }
+
+        if (userProfile?.role !== 'student' && userProfile?.role !== 'tutor') {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'Invalid user role for materials access'
+            });
         }
 
         // Filter by course if provided

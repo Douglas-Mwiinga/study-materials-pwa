@@ -36,7 +36,7 @@
                         placeholder="Search material..."
                     >
                     
-                    <div id="materialsStats" style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 4px; font-size: 0.9em;">
+                    <div id="materialsStats" class="materials-stats">
                         <p><strong>Materials:</strong> <span id="materialsCount">0</span></p>
                     </div>
                 </aside>
@@ -92,7 +92,7 @@
                             <input id="materialFile" class="materials-file" type="file">
 
                             <button type="submit" class="upload-btn">Upload</button>
-                            <div id="uploadMessage" class="error-message" style="display: none; margin-top: 15px; padding: 10px; border-radius: 4px;"></div>
+                            <div id="uploadMessage" class="error-message upload-message-hidden"></div>
                         </form>
                     </div>
                 </section>
@@ -105,7 +105,7 @@
         <div class="container">
             <div class="nav-items">
                 <a href="materials.html" class="nav-item nav-active">Materials</a>
-                <a href="dashboard.html" class="nav-item" id="dashboardNavItem" style="display: none;">Dashboard</a>
+                <a href="dashboard.html" class="nav-item nav-hidden" id="dashboardNavItem">Dashboard</a>
                 <a href="feedback.html" class="nav-item" id="feedbackNavItem">Feedback & Rating</a>
                 <a href="#" class="nav-item">Sign out</a>
             </div>
@@ -117,6 +117,18 @@
             <span>&copy; 2026 Smart Up. All rights reserved.</span>
         </div>
     </footer>
+
+    <!-- Student Approval Status Modal -->
+    <div class="approval-modal-overlay" id="approvalModalOverlay">
+        <div class="approval-modal">
+            <div class="approval-modal-icon" id="approvalModalIcon">⏳</div>
+            <h2 class="approval-modal-title" id="approvalModalTitle">Pending Approval</h2>
+            <p class="approval-modal-text" id="approvalModalText">
+                Your access request is under review. A tutor will approve your request shortly.
+            </p>
+            <button class="approval-modal-btn" id="approvalModalBtn" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+        </div>
+    </div>
 
     <script src="../js/auth.js"></script>
     <script src="../js/materials.js"></script>
@@ -524,10 +536,83 @@
             }
         }
 
-        // Load materials on page load (with delay to ensure scripts are loaded)
-        function initMaterials() {
+        // Check student approval status before loading materials
+        async function checkStudentApproval() {
             const role = localStorage.getItem('role');
+            
+            // Only check for students
+            if (role !== 'student') {
+                return true; // Tutors proceed normally
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    console.warn('No auth token found');
+                    return false;
+                }
+
+                const API_URL = window.API_URL || 'http://localhost:3001';
+                const response = await fetch(`${API_URL}/api/student-access/status`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    console.error('Failed to check approval status:', data.message);
+                    return false;
+                }
+
+                // Show modal if not approved
+                if (data.status === 'pending') {
+                    const overlay = document.getElementById('approvalModalOverlay');
+                    const icon = document.getElementById('approvalModalIcon');
+                    const title = document.getElementById('approvalModalTitle');
+                    const text = document.getElementById('approvalModalText');
+                    
+                    icon.textContent = '⏳';
+                    title.textContent = 'Pending Approval';
+                    text.textContent = 'Your access request is under review. A tutor will approve your request shortly.';
+                    overlay.style.display = 'flex';
+                    return false;
+                } else if (data.status === 'rejected') {
+                    const overlay = document.getElementById('approvalModalOverlay');
+                    const icon = document.getElementById('approvalModalIcon');
+                    const title = document.getElementById('approvalModalTitle');
+                    const text = document.getElementById('approvalModalText');
+                    
+                    icon.textContent = '❌';
+                    title.textContent = 'Access Denied';
+                    text.textContent = data.message || 'Your access request was not approved. Please contact your tutor for more information.';
+                    overlay.style.display = 'flex';
+                    return false;
+                }
+
+                // Approved - proceed normally
+                return true;
+            } catch (error) {
+                console.error('Error checking approval status:', error);
+                return false;
+            }
+        }
+
+        // Load materials on page load (with delay to ensure scripts are loaded)
+        async function initMaterials() {
+            const role = localStorage.getItem('role');
+            
+            // For students, check approval status first
             if (role === 'student') {
+                const canProceed = await checkStudentApproval();
+                if (!canProceed) {
+                    console.log('Student approval check failed, showing modal');
+                    return; // Stop here if not approved
+                }
+                
                 if (typeof loadMaterials === 'function') {
                     loadMaterials();
                 } else {

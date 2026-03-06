@@ -152,6 +152,55 @@
             font-size: 0.9em;
             color: #999;
         }
+        .status-title {
+            text-align: center;
+            color: #333;
+        }
+        .status-loading {
+            text-align: center;
+            color: #999;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+        }
+        .error-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .appeal-form {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        .appeal-label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .appeal-textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 120px;
+            resize: vertical;
+        }
+        .appeal-buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .notes-text {
+            margin-bottom: 0;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .timeline-marker-approved {
+            background: #4caf50;
+        }
     </style>
 </head>
 <body>
@@ -168,10 +217,10 @@
 
     <main>
         <div class="status-container">
-            <h1 style="text-align: center; color: #333;">Tutor Account Status</h1>
+            <h1 class="status-title">Tutor Account Status</h1>
 
             <div id="statusContent">
-                <p style="text-align: center; color: #999;">Loading your account status...</p>
+                <p class="status-loading">Loading your account status...</p>
             </div>
         </div>
     </main>
@@ -200,8 +249,8 @@
             
             if (!token || role !== 'tutor') {
                 document.getElementById('statusContent').innerHTML = `
-                    <p style="color: red; text-align: center;">Only tutors can view this page.</p>
-                    <div style="text-align: center; margin-top: 20px;">
+                    <p class="error-message">Only tutors can view this page.</p>
+                    <div class="error-container">
                         <a href="dashboard.html" class="btn btn-primary">Go to Dashboard</a>
                     </div>
                 `;
@@ -228,7 +277,7 @@
                         <div class="status-message">
                             <p><strong>Your tutor account is awaiting admin review.</strong></p>
                             <p>An administrator will review your application and notify you of their decision. This process typically takes 24-48 hours.</p>
-                            <p style="margin-bottom: 0; color: #666; font-size: 0.9em;">You will not be able to upload materials until your account is approved.</p>
+                            <p class="notes-text">You will not be able to upload materials until your account is approved.</p>
                         </div>
                         <div class="timeline">
                             <div class="timeline-item">
@@ -260,7 +309,7 @@
                                 </div>
                             </div>
                             <div class="timeline-item">
-                                <div class="timeline-marker" style="background: #4caf50;"></div>
+                                <div class="timeline-marker timeline-marker-approved"></div>
                                 <div class="timeline-content">
                                     <div class="timeline-label">Account Approved</div>
                                     <div class="timeline-date">${new Date(user.tutor_approved_at).toLocaleDateString()}</div>
@@ -293,10 +342,10 @@
                             <button id="appealBtn" class="btn btn-danger">Submit Appeal</button>
                             <a href="dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
                         </div>
-                        <div id="appealForm" style="display: none; margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 4px;">
-                            <label for="appealText" style="display: block; font-weight: bold; margin-bottom: 10px;">Appeal Message:</label>
-                            <textarea id="appealText" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; min-height: 120px; resize: vertical;"></textarea>
-                            <div style="margin-top: 10px; display: flex; gap: 10px;">
+                        <div id="appealForm" class="appeal-form">
+                            <label for="appealText" class="appeal-label">Appeal Message:</label>
+                            <textarea id="appealText" class="appeal-textarea"></textarea>
+                            <div class="appeal-buttons">
                                 <button id="submitAppealBtn" class="btn btn-primary">Submit Appeal</button>
                                 <button id="cancelAppealBtn" class="btn btn-secondary">Cancel</button>
                             </div>
@@ -331,8 +380,8 @@
             } catch (error) {
                 console.error('Load status error:', error);
                 document.getElementById('statusContent').innerHTML = `
-                    <p style="color: red; text-align: center;">Error loading your account status.</p>
-                    <div style="text-align: center; margin-top: 20px;">
+                    <p class="error-message">Error loading your account status.</p>
+                    <div class="error-container">
                         <a href="dashboard.html" class="btn btn-primary">Back to Dashboard</a>
                     </div>
                 `;

@@ -34,22 +34,22 @@
 
                     </select>
 
-                    <div id="tutorialGroupContainer" style="display: none;">
+                    <div id="tutorialGroupContainer" class="hidden-section">
                         <label for="tutorialGroup">Tutorial Group Name</label>
                         <input type="text" id="tutorialGroup" name="tutorialGroup" placeholder="e.g., Math 101, Chemistry Advanced" required>
-                        <small style="display: block; color: #666; margin-top: 5px;">Which tutorial group are you joining?</small>
+                        <small class="help-text">Which tutorial group are you joining?</small>
                     </div>
 
-                    <div id="paymentScreenshotContainer" style="display: none;">
+                    <div id="paymentScreenshotContainer" class="hidden-section">
                         <label for="paymentScreenshot">Payment Proof (Screenshot)</label>
                         <input type="file" id="paymentScreenshot" name="paymentScreenshot" accept="image/*" required>
-                        <small style="display: block; color: #666; margin-top: 5px;">Upload a screenshot of your payment confirmation</small>
+                        <small class="help-text">Upload a screenshot of your payment confirmation</small>
                     </div>
 
                     <button type="submit" class="login-btn">Sign Up</button>
                 </form>
                 <p class="login-link">Already have an account? <a href="login.html">Log in</a></p>
-                <div id="errorMessage" class="error-message" style="display: none; color: #d32f2f; margin-top: 15px; padding: 10px; background: #ffebee; border-radius: 4px;"></div>
+                <div id="errorMessage" class="error-message"></div>
             </div>
         </section>
     </main>
@@ -72,12 +72,13 @@
         function updateNameLabel() {
             const selectedRole = roleSelect.value;
             if (selectedRole === 'tutor') {
-                nameLabel.textContent = 'Tutorials Group Name';
-                nameInput.placeholder = 'Enter your tutorials group name';
+                nameLabel.textContent = 'Full Name';
+                nameInput.placeholder = 'Enter your full name';
                 paymentScreenshotContainer.style.display = 'none';
                 paymentScreenshotInput.required = false;
-                tutorialGroupContainer.style.display = 'none';
-                tutorialGroupInput.required = false;
+                tutorialGroupContainer.style.display = 'block';
+                tutorialGroupInput.required = true;
+                document.querySelector('#tutorialGroupContainer small').textContent = 'Which tutorial group do you manage?';
             } else if (selectedRole === 'student') {
                 nameLabel.textContent = 'Full Name';
                 nameInput.placeholder = 'Enter your full name';
@@ -85,6 +86,7 @@
                 paymentScreenshotInput.required = true;
                 tutorialGroupContainer.style.display = 'block';
                 tutorialGroupInput.required = true;
+                document.querySelector('#tutorialGroupContainer small').textContent = 'Which tutorial group are you joining?';
             } else {
                 nameLabel.textContent = 'Full Name';
                 nameInput.placeholder = 'Enter your full name';
@@ -109,7 +111,7 @@
             const password = document.getElementById('password').value;
             const role = document.getElementById('role').value;
             const paymentScreenshot = document.getElementById('paymentScreenshot').files[0] || null;
-            const tutorialGroup = role === 'student' ? document.getElementById('tutorialGroup').value : null;
+            const tutorialGroup = document.getElementById('tutorialGroup').value || null;
             const errorDiv = document.getElementById('errorMessage');
             const submitBtn = document.querySelector('.login-btn');
             
@@ -131,9 +133,11 @@
                 return;
             }
 
-            // Validate tutorial group for students
-            if (role === 'student' && !tutorialGroup) {
-                errorDiv.textContent = 'Students must specify which tutorial group they are joining';
+            // Validate tutorial group for students and tutors
+            if ((role === 'student' || role === 'tutor') && !tutorialGroup) {
+                errorDiv.textContent = role === 'student' 
+                    ? 'Students must specify which tutorial group they are joining'
+                    : 'Tutors must specify which tutorial group they manage';
                 errorDiv.style.display = 'block';
                 return;
             }

@@ -8,7 +8,11 @@
     "dev": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["education", "materials", "api"],
+  "keywords": [
+    "education",
+    "materials",
+    "api"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -17,6 +21,6 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "multer": "^2.0.2",
-    "nodemailer": "^6.9.7"
+    "nodemailer": "^8.0.1"
   }
 }

@@ -39,22 +39,32 @@ router.get('/pending', requireAuth, async (req, res) => {
     try {
         const tutorId = req.user.id;
 
-        // Get all pending approvals for this tutor
+        const { data: tutorProfile, error: tutorProfileError } = await supabaseAdmin
+            .from('profiles')
+            .select('id, role, tutorial_group')
+            .eq('id', tutorId)
+            .single();
+
+        if (tutorProfileError || !tutorProfile || tutorProfile.role !== 'tutor') {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'Only tutors can view pending approvals'
+            });
+        }
+
+        if (!tutorProfile.tutorial_group) {
+            return res.json({
+                success: true,
+                data: []
+            });
+        }
+
+        // Get all pending approvals for this tutor's tutorial group
         const { data: pendingApprovals, error } = await supabaseAdmin
             .from('student_approvals')
-            .select(`
-                id,
-                student_id,
-                payment_screenshot_url,
-                status,
-                created_at,
-                profiles!student_approvals_student_id_fk(
-                    name,
-                    email
-                )
-            `)
-            .eq('tutor_id', tutorId)
+            .select('id, student_id, payment_screenshot_url, status, created_at, tutorial_group_name, tutor_id')
             .eq('status', 'pending')
+            .eq('tutorial_group_name', tutorProfile.tutorial_group)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -64,9 +74,35 @@ router.get('/pending', requireAuth, async (req, res) => {
             });
         }
 
+        if (!pendingApprovals || pendingApprovals.length === 0) {
+            return res.json({
+                success: true,
+                data: []
+            });
+        }
+
+        const studentIds = pendingApprovals.map(item => item.student_id);
+        const { data: studentProfiles, error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .select('id, name, email')
+            .in('id', studentIds);
+
+        if (profileError) {
+            return res.status(500).json({
+                error: 'Failed to fetch student profiles',
+                message: profileError.message
+            });
+        }
+
+        const profileMap = new Map((studentProfiles || []).map(profile => [profile.id, profile]));
+        const hydratedApprovals = pendingApprovals.map(item => ({
+            ...item,
+            profiles: profileMap.get(item.student_id) || null
+        }));
+
         res.json({
             success: true,
-            data: pendingApprovals || []
+            data: hydratedApprovals
         });
 
     } catch (error) {
@@ -89,18 +125,7 @@ router.get('/approved', requireAuth, async (req, res) => {
         // Get all approved approvals for this tutor
         const { data: approvedApprovals, error } = await supabaseAdmin
             .from('student_approvals')
-            .select(`
-                id,
-                student_id,
-                status,
-                access_expires_at,
-                created_at,
-                approved_at,
-                profiles!student_approvals_student_id_fk(
-                    name,
-                    email
-                )
-            `)
+            .select('id, student_id, status, access_expires_at, created_at, approved_at, tutorial_group_name, tutor_id')
             .eq('tutor_id', tutorId)
             .eq('status', 'approved')
             .order('approved_at', { ascending: false });
@@ -112,9 +137,35 @@ router.get('/approved', requireAuth, async (req, res) => {
             });
         }
 
+        if (!approvedApprovals || approvedApprovals.length === 0) {
+            return res.json({
+                success: true,
+                data: []
+            });
+        }
+
+        const studentIds = approvedApprovals.map(item => item.student_id);
+        const { data: studentProfiles, error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .select('id, name, email')
+            .in('id', studentIds);
+
+        if (profileError) {
+            return res.status(500).json({
+                error: 'Failed to fetch student profiles',
+                message: profileError.message
+            });
+        }
+
+        const profileMap = new Map((studentProfiles || []).map(profile => [profile.id, profile]));
+        const hydratedApprovals = approvedApprovals.map(item => ({
+            ...item,
+            profiles: profileMap.get(item.student_id) || null
+        }));
+
         res.json({
             success: true,
-            data: approvedApprovals || []
+            data: hydratedApprovals
         });
 
     } catch (error) {
@@ -136,18 +187,52 @@ router.post('/approve/:approvalId', requireAuth, async (req, res) => {
         const tutorId = req.user.id;
         let { expiryDate } = req.body; // Format: "YYYY-MM-DD"
 
+        // Get tutor profile
+        const { data: tutorProfile, error: tutorProfileError } = await supabaseAdmin
+            .from('profiles')
+            .select('id, role, tutorial_group, name')
+            .eq('id', tutorId)
+            .single();
+
+        if (tutorProfileError || !tutorProfile || tutorProfile.role !== 'tutor') {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'Only tutors can approve students'
+            });
+        }
+
         // Get approval record with student info
         const { data: approval } = await supabaseAdmin
             .from('student_approvals')
-            .select('student_id, tutor_id')
+            .select('student_id, tutor_id, tutorial_group_name, status')
             .eq('id', approvalId)
-            .eq('tutor_id', tutorId)
             .single();
 
         if (!approval) {
             return res.status(404).json({
                 error: 'Approval not found',
-                message: 'Approval record does not exist or does not belong to you'
+                message: 'Approval record does not exist'
+            });
+        }
+
+        if (approval.status !== 'pending') {
+            return res.status(400).json({
+                error: 'Invalid approval state',
+                message: 'Only pending approvals can be approved'
+            });
+        }
+
+        if (!tutorProfile.tutorial_group || approval.tutorial_group_name !== tutorProfile.tutorial_group) {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'You can only approve students in your tutorial group'
+            });
+        }
+
+        if (approval.tutor_id && approval.tutor_id !== tutorId) {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'This approval is already assigned to another tutor'
             });
         }
 
@@ -199,12 +284,12 @@ router.post('/approve/:approvalId', requireAuth, async (req, res) => {
         const { data: updatedApproval, error } = await supabaseAdmin
             .from('student_approvals')
             .update({
+                tutor_id: tutorId,
                 status: 'approved',
                 access_expires_at: expiryDate,
                 approved_at: new Date().toISOString()
             })
             .eq('id', approvalId)
-            .eq('tutor_id', tutorId)
             .select()
             .single();
 
@@ -220,7 +305,7 @@ router.post('/approve/:approvalId', requireAuth, async (req, res) => {
             await emailService.sendStudentApprovalGranted(
                 student.email,
                 student.name,
-                tutor?.name || 'Your Tutor'
+                tutorProfile.name || tutor?.name || 'Your Tutor'
             );
         }
 
@@ -249,18 +334,52 @@ router.post('/reject/:approvalId', requireAuth, async (req, res) => {
         const tutorId = req.user.id;
         const { notes } = req.body; // Optional rejection reason
 
+        // Get tutor profile
+        const { data: tutorProfile, error: tutorProfileError } = await supabaseAdmin
+            .from('profiles')
+            .select('id, role, tutorial_group, name')
+            .eq('id', tutorId)
+            .single();
+
+        if (tutorProfileError || !tutorProfile || tutorProfile.role !== 'tutor') {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'Only tutors can reject students'
+            });
+        }
+
         // Get approval record with student info
         const { data: approval } = await supabaseAdmin
             .from('student_approvals')
-            .select('student_id, tutor_id')
+            .select('student_id, tutor_id, tutorial_group_name, status')
             .eq('id', approvalId)
-            .eq('tutor_id', tutorId)
             .single();
 
         if (!approval) {
             return res.status(404).json({
                 error: 'Approval not found',
-                message: 'Approval record does not exist or does not belong to you'
+                message: 'Approval record does not exist'
+            });
+        }
+
+        if (approval.status !== 'pending') {
+            return res.status(400).json({
+                error: 'Invalid approval state',
+                message: 'Only pending approvals can be rejected'
+            });
+        }
+
+        if (!tutorProfile.tutorial_group || approval.tutorial_group_name !== tutorProfile.tutorial_group) {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'You can only reject students in your tutorial group'
+            });
+        }
+
+        if (approval.tutor_id && approval.tutor_id !== tutorId) {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'This approval is already assigned to another tutor'
             });
         }
 
@@ -281,12 +400,12 @@ router.post('/reject/:approvalId', requireAuth, async (req, res) => {
         const { data: updatedApproval, error } = await supabaseAdmin
             .from('student_approvals')
             .update({
+                tutor_id: tutorId,
                 status: 'rejected',
                 rejected_at: new Date().toISOString(),
                 notes: notes || null
             })
             .eq('id', approvalId)
-            .eq('tutor_id', tutorId)
             .select()
             .single();
 
@@ -302,13 +421,12 @@ router.post('/reject/:approvalId', requireAuth, async (req, res) => {
             await emailService.sendStudentApprovalRejected(
                 student.email,
                 student.name,
-                tutor?.name || 'Your Tutor'
+                tutorProfile.name || tutor?.name || 'Your Tutor'
             );
         }
 
         res.json({
             success: true,
-            message: 'Student rejected successfully and notification sent',
             message: 'Student rejected successfully',
             data: updatedApproval
         });
@@ -485,6 +603,87 @@ router.post('/settings', requireAuth, async (req, res) => {
 
     } catch (error) {
         console.error('Save settings error:', error);
+        res.status(500).json({
+            error: 'Internal server error',
+            message: error.message
+        });
+    }
+});
+
+// =============================================
+// GET /api/student-access/status
+// Get student approval status (for modal UI)
+// =============================================
+router.get('/status', requireAuth, async (req, res) => {
+    try {
+        const studentId = req.user.id;
+
+        // Get student profile to check role
+        const { data: profile, error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .select('role')
+            .eq('id', studentId)
+            .single();
+
+        if (profileError || !profile || profile.role !== 'student') {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'Only students can check approval status'
+            });
+        }
+
+        // Get student approval record
+        const { data: approvals, error: approvalsError } = await supabaseAdmin
+            .from('student_approvals')
+            .select('status, access_expires_at, tutorial_group_name')
+            .eq('student_id', studentId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (approvalsError) {
+            return res.status(500).json({
+                error: 'Failed to get approval status',
+                message: approvalsError.message
+            });
+        }
+
+        // No approval record found
+        if (!approvals || approvals.length === 0) {
+            return res.json({
+                success: true,
+                status: 'pending',
+                message: 'No approval record found. Please wait for tutor approval.'
+            });
+        }
+
+        const approval = approvals[0];
+
+        // Check if approved but expired
+        if (approval.status === 'approved') {
+            const now = new Date().toISOString();
+            if (approval.access_expires_at && approval.access_expires_at < now) {
+                return res.json({
+                    success: true,
+                    status: 'rejected',
+                    message: 'Your access has expired. Please contact your tutor to renew.'
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            status: approval.status,
+            tutorialGroup: approval.tutorial_group_name,
+            expiresAt: approval.access_expires_at,
+            message: approval.status === 'pending' 
+                ? 'Your access request is under review.'
+                : approval.status === 'rejected'
+                ? 'Your access request was not approved.'
+                : 'Access approved'
+        });
+
+    } catch (error) {
+        console.error('Get approval status error:', error);
         res.status(500).json({
             error: 'Internal server error',
             message: error.message

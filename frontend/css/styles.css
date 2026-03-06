@@ -750,6 +750,20 @@ footer {
     color: #fff;
 }
 
+/* Login/Form Error Messages */
+.error-message {
+    color: #d32f2f;
+    margin-top: 15px;
+    padding: 10px;
+    background: #ffebee;
+    border-radius: 4px;
+    display: none;
+}
+
+.error-message.show {
+    display: block;
+}
+
 .dashboard-toast {
     position: fixed;
     right: 20px;
@@ -842,6 +856,60 @@ footer {
 .dashboard-confirm-ok {
     background: #d32f2f;
     color: #fff;
+}
+
+/* Student Approval Modal */
+.approval-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1400;
+    padding: 16px;
+}
+
+.approval-modal {
+    width: min(440px, 100%);
+    background: #fff;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    text-align: center;
+}
+
+.approval-modal-icon {
+    font-size: 3.5em;
+    margin-bottom: 16px;
+}
+
+.approval-modal-title {
+    margin: 0 0 12px;
+    font-size: 1.4em;
+    color: #333;
+}
+
+.approval-modal-text {
+    margin: 0 0 24px;
+    color: #666;
+    line-height: 1.5;
+    font-size: 0.98em;
+}
+
+.approval-modal-btn {
+    border: none;
+    border-radius: 6px;
+    padding: 10px 24px;
+    font-size: 1em;
+    cursor: pointer;
+    background: #d32f2f;
+    color: #fff;
+    transition: background 0.2s;
+}
+
+.approval-modal-btn:hover {
+    background: #b71c1c;
 }
 
 .feedback-title,

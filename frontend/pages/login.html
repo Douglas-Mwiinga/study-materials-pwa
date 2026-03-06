@@ -26,7 +26,7 @@
                     <button type="submit" class="login-btn">Log In</button>
                 </form>
                 <p class="login-link">Don't have an account? <a href="signup.html">Sign up</a></p>
-                <div id="errorMessage" class="error-message" style="display: none; color: #d32f2f; margin-top: 15px; padding: 10px; background: #ffebee; border-radius: 4px;"></div>
+                <div id="errorMessage" class="error-message"></div>
             </div>
         </section>
     </main>
@@ -46,7 +46,7 @@
             const submitBtn = document.querySelector('.login-btn');
             
             // Clear previous errors
-            errorDiv.style.display = 'none';
+            errorDiv.classList.remove('show');
             errorDiv.textContent = '';
             
             // Disable button during request
@@ -67,7 +67,7 @@
             } catch (error) {
                 // Show error message
                 errorDiv.textContent = error.message || 'Login failed. Please check your credentials.';
-                errorDiv.style.display = 'block';
+                errorDiv.classList.add('show');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Log In';
             }

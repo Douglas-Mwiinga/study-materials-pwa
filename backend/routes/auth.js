@@ -44,6 +44,14 @@ router.post('/signup', upload.any(), async (req, res) => {
             });
         }
 
+        // Validate tutor requires tutorial group
+        if (role === 'tutor' && !tutorialGroup) {
+            return res.status(400).json({
+                error: 'Missing tutorial group',
+                message: 'Tutors must specify which tutorial group they manage'
+            });
+        }
+
         if (role !== 'student' && role !== 'tutor') {
             return res.status(400).json({
                 error: 'Invalid role',
@@ -114,6 +122,9 @@ router.post('/signup', upload.any(), async (req, res) => {
             }
         }
 
+        // Both students and tutors use tutorialGroup field
+        const resolvedTutorialGroup = tutorialGroup || null;
+
         // Create profile in profiles table
         const profileData = {
             id: userId,
@@ -121,7 +132,7 @@ router.post('/signup', upload.any(), async (req, res) => {
             name: name,
             role: role,
             payment_screenshot_url: paymentScreenshotUrl,
-            tutorial_group: tutorialGroup || null
+            tutorial_group: resolvedTutorialGroup
         };
 
         // Set tutor_status for tutors (pending approval)
@@ -178,7 +189,7 @@ router.post('/signup', upload.any(), async (req, res) => {
                 email: email,
                 name: name,
                 role: role,
-                tutorialGroup: tutorialGroup || null
+                tutorialGroup: resolvedTutorialGroup
             }
         });
 
