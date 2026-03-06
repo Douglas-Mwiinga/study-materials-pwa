@@ -137,6 +137,117 @@
                         }
                     })();
 
+                    // Modal functions
+                    function openTutorStatusModal() {
+                        const modal = document.getElementById('tutorStatusModal');
+                        if (modal) {
+                            modal.classList.remove('tutor-status-modal-hidden');
+                        }
+                    }
+
+                    function closeTutorStatusModal() {
+                        const modal = document.getElementById('tutorStatusModal');
+                        if (modal) {
+                            modal.classList.add('tutor-status-modal-hidden');
+                        }
+                    }
+
+                    async function loadTutorStatusModal() {
+                        try {
+                            const token = localStorage.getItem('authToken');
+                            if (!token) return;
+
+                            const baseUrl = window.API_URL || 'http://localhost:3001';
+                            const response = await fetch(`${baseUrl}/api/auth/me`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            
+                            if (!response.ok) throw new Error('Failed to load status');
+                            
+                            const result = await response.json();
+                            const user = result.user;
+                            
+                            let statusHTML = `
+                                <div class="tutor-status-header">
+                                    <h2>Account Status</h2>
+                                </div>
+                                <div class="tutor-status-body">
+                                    <div class="status-badge status-${user.tutor_status || 'pending'}">
+                                        ${(user.tutor_status || 'pending').toUpperCase()}
+                                    </div>
+                                    <p class="status-message">
+                                        ${user.tutor_status === 'approved' ? 'Your account is approved. You can upload and manage materials.' : 
+                                          user.tutor_status === 'pending' ? 'Your account is pending review. Please check back later.' : 
+                                          'Your account was rejected. You can submit an appeal below.'}
+                                    </p>
+                            `;
+                            
+                            if (user.tutor_status === 'pending') {
+                                statusHTML += `
+                                    <div class="appeal-section">
+                                        <p class="appeal-message">Still pending? Contact support or check your email for updates.</p>
+                                    </div>
+                                `;
+                            } else if (user.tutor_status === 'rejected') {
+                                statusHTML += `
+                                    <div class="appeal-section">
+                                        <h3 class="appeal-title">Submit an Appeal</h3>
+                                        <form id="appealForm" class="appeal-form">
+                                            <textarea id="appealNotes" name="appealNotes" placeholder="Tell us why you should be approved..." class="appeal-textarea"></textarea>
+                                            <button type="submit" class="appeal-submit-btn">Submit Appeal</button>
+                                        </form>
+                                        <div id="appealMessage" class="appeal-message"></div>
+                                    </div>
+                                `;
+                            }
+                            
+                            statusHTML += '</div>';
+                            
+                            document.getElementById('tutorStatusContent').innerHTML = statusHTML;
+                            
+                            // Set up appeal form if rejected
+                            if (user.tutor_status === 'rejected') {
+                                const appealForm = document.getElementById('appealForm');
+                                if (appealForm) {
+                                    appealForm.addEventListener('submit', async function(e) {
+                                        e.preventDefault();
+                                        const notes = document.getElementById('appealNotes').value.trim();
+                                        if (!notes) {
+                                            alert('Please enter your appeal message.');
+                                            return;
+                                        }
+                                        
+                                        try {
+                                            const response = await fetch(`${baseUrl}/api/tutor-approvals/appeal/${user.id}`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Authorization': `Bearer ${token}`,
+                                                    'Content-Type': 'application/json'
+                                                },
+                                                body: JSON.stringify({ notes })
+                                            });
+                                            
+                                            if (response.ok) {
+                                                document.getElementById('appealMessage').textContent = 'Appeal submitted successfully!';
+                                                document.getElementById('appealMessage').className = 'appeal-message success';
+                                                appealForm.reset();
+                                            } else {
+                                                document.getElementById('appealMessage').textContent = 'Failed to submit appeal.';
+                                                document.getElementById('appealMessage').className = 'appeal-message error';
+                                            }
+                                        } catch (error) {
+                                            document.getElementById('appealMessage').textContent = 'Error submitting appeal.';
+                                            document.getElementById('appealMessage').className = 'appeal-message error';
+                                        }
+                                    });
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error loading tutor status modal:', e);
+                            document.getElementById('tutorStatusContent').innerHTML = '<p>Error loading status. Please try again.</p>';
+                        }
+                    }
+
                     // Add click handler when DOM is ready
                     document.addEventListener('DOMContentLoaded', function() {
                         const card = document.getElementById('statusCardContainer');
@@ -272,7 +383,7 @@
     </div>
 
     <!-- Tutor Status Modal -->
-    <div id="tutorStatusModal" class="tutor-status-modal-overlay tutor-status-modal-hidden">
+    <div id="tutorStatusModal" class="tutor-status-modal-overlay tutor-status-modal-hidden" onclick="if(event.target === this) closeTutorStatusModal()">
         <div class="tutor-status-modal">
             <button class="modal-close-btn" onclick="closeTutorStatusModal()">×</button>
             <div id="tutorStatusContent">
