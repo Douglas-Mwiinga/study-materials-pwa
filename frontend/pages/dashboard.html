@@ -132,9 +132,10 @@
                             card.style.background = `linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%)`;
                             card.style.cursor = 'pointer';
                             
-                            // Add click handler to navigate to status page
+                            // Add click handler to open modal
                             card.addEventListener('click', () => {
-                                window.location.href = 'status.html';
+                                openTutorStatusModal();
+                                loadTutorStatusModal();
                             });
                         } catch (e) {
                             console.error('Error loading status:', e);
@@ -260,6 +261,16 @@
             <div class="dashboard-confirm-actions">
                 <button id="dashboardConfirmCancel" type="button" class="dashboard-confirm-btn dashboard-confirm-cancel">Cancel</button>
                 <button id="dashboardConfirmOk" type="button" class="dashboard-confirm-btn dashboard-confirm-ok">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutor Status Modal -->
+    <div id="tutorStatusModal" class="tutor-status-modal-overlay tutor-status-modal-hidden">
+        <div class="tutor-status-modal">
+            <button class="modal-close-btn" onclick="closeTutorStatusModal()">×</button>
+            <div id="tutorStatusContent">
+                <!-- Content loaded dynamically -->
             </div>
         </div>
     </div>
