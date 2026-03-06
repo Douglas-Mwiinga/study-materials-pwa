@@ -130,18 +130,24 @@
                             
                             const card = document.getElementById('statusCardContainer');
                             card.style.background = `linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%)`;
-                            card.style.cursor = 'pointer';
-                            
-                            // Add click handler to open modal
-                            card.addEventListener('click', () => {
-                                openTutorStatusModal();
-                                loadTutorStatusModal();
-                            });
+                            card.style.color = '#fff';
                         } catch (e) {
                             console.error('Error loading status:', e);
                             document.getElementById('statusCardContainer').style.display = 'none';
                         }
                     })();
+
+                    // Add click handler when DOM is ready
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const card = document.getElementById('statusCardContainer');
+                        if (card) {
+                            card.addEventListener('click', function() {
+                                openTutorStatusModal();
+                                loadTutorStatusModal();
+                            });
+                            card.style.cursor = 'pointer';
+                        }
+                    });
                 </script>
 
                 <!-- Downloads Per Material Chart -->
