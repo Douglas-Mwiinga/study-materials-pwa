@@ -84,6 +84,38 @@ async function getTutorFeedback(tutorId) {
 }
 
 /**
+ * Get approved students count for tutor
+ * @returns {Promise<number>} Count of approved students
+ */
+async function getApprovedStudentsCount() {
+    try {
+        const token = getAuthToken();
+        if (!token) {
+            throw new Error('Authentication required');
+        }
+
+        const response = await fetch(`${window.API_URL}/api/student-access/approved`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || result.error || 'Failed to fetch approved students');
+        }
+
+        return result.data ? result.data.length : 0;
+    } catch (error) {
+        console.error('Get approved students count error:', error);
+        return 0;
+    }
+}
+
+/**
  * Calculate dashboard statistics
  * @param {Array} materials - Materials array
  * @param {Array} feedback - Feedback array
@@ -91,10 +123,6 @@ async function getTutorFeedback(tutorId) {
  */
 function calculateDashboardStats(materials, feedback) {
     const totalDownloads = materials.reduce((sum, m) => sum + (m.downloads_count || 0), 0);
-    
-    // Get unique students who downloaded (simplified - using feedback as proxy)
-    const uniqueStudents = new Set(feedback.map(f => f.student_id || f.profiles?.id));
-    const activeStudents = uniqueStudents.size;
     
     // Find top material by downloads
     const topMaterial = materials.length > 0 
@@ -107,7 +135,6 @@ function calculateDashboardStats(materials, feedback) {
     
     return {
         totalDownloads,
-        activeStudents,
         topMaterial: topMaterial?.course || 'N/A',
         recentFeedback
     };
@@ -118,6 +145,7 @@ if (typeof window !== 'undefined') {
     window.getTutorMaterials = getTutorMaterials;
     window.getTutorFeedback = getTutorFeedback;
     window.calculateDashboardStats = calculateDashboardStats;
+    window.getApprovedStudentsCount = getApprovedStudentsCount;
     // Note: getCurrentUser in dashboard.js is synchronous (reads from localStorage)
     // This is different from auth.js getCurrentUser which is async (API call)
     window.getCurrentUserFromStorage = getCurrentUser;
@@ -129,6 +157,7 @@ if (typeof module !== 'undefined' && module.exports) {
         getTutorMaterials,
         getTutorFeedback,
         calculateDashboardStats,
+        getApprovedStudentsCount,
         getCurrentUser
     };
 }

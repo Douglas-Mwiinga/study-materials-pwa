@@ -376,6 +376,45 @@ router.post('/:id/download', async (req, res) => {
     try {
         const { id } = req.params;
 
+        // Check authentication
+        const userId = await getUserIdFromToken(req.headers.authorization);
+        if (userId) {
+            // If authenticated, verify student access hasn't expired
+            const { data: userProfile, error: profileError } = await getUserProfile(userId);
+            
+            if (!profileError && userProfile && userProfile.role === 'student') {
+                // Check student approval and expiry
+                const { data: latestApproval, error: approvalError } = await supabaseAdmin
+                    .from('student_approvals')
+                    .select('status, access_expires_at')
+                    .eq('student_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (!approvalError && latestApproval) {
+                    if (latestApproval.status !== 'approved') {
+                        return res.status(403).json({
+                            error: 'Approval required',
+                            message: 'Your account is pending tutor approval.'
+                        });
+                    }
+
+                    // Check expiry
+                    if (latestApproval.access_expires_at) {
+                        const expiresAt = new Date(latestApproval.access_expires_at);
+                        const now = new Date();
+                        if (expiresAt < now) {
+                            return res.status(403).json({
+                                error: 'Access expired',
+                                message: 'Your access to materials has expired. Please contact your tutor.'
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         // Get current material
         const { data: currentMaterial, error: fetchError } = await supabaseAdmin
             .from('materials')

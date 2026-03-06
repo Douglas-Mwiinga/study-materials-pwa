@@ -507,10 +507,11 @@
             }
 
             try {
-                // Load materials and feedback in parallel
-                const [materialsResult, feedbackResult] = await Promise.all([
+                // Load materials, feedback, and approved students count in parallel
+                const [materialsResult, feedbackResult, activeStudentsCount] = await Promise.all([
                     getTutorMaterials(user.id),
-                    getTutorFeedback(user.id)
+                    getTutorFeedback(user.id),
+                    getApprovedStudentsCount()
                 ]);
 
                 allMaterials = materialsResult.materials || [];
@@ -521,7 +522,7 @@
 
                 // Update stat cards
                 document.getElementById('totalDownloads').textContent = stats.totalDownloads;
-                document.getElementById('activeStudents').textContent = stats.activeStudents;
+                document.getElementById('activeStudents').textContent = activeStudentsCount;
                 document.getElementById('topMaterial').textContent = stats.topMaterial;
 
                 // Update recent activity
