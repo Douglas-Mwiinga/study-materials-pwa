@@ -330,6 +330,55 @@
                     <div id="settingsMessage" class="settings-message"></div>
                 </div>
 
+                <!-- Admin Panel (only visible to admins) -->
+                <div id="adminSection" class="dashboard-admin-panel dashboard-admin-panel-hidden">
+                    <h3 class="admin-section-title">🔐 Admin Panel - Tutor Approvals</h3>
+                    
+                    <!-- Admin Stats -->
+                    <div class="admin-stats">
+                        <div class="admin-stat-card">
+                            <span class="admin-stat-label">Total Tutors</span>
+                            <span class="admin-stat-value" id="adminTotalTutors">0</span>
+                        </div>
+                        <div class="admin-stat-card">
+                            <span class="admin-stat-label">Total Students</span>
+                            <span class="admin-stat-value" id="adminTotalStudents">0</span>
+                        </div>
+                        <div class="admin-stat-card">
+                            <span class="admin-stat-label">Pending Approvals</span>
+                            <span class="admin-stat-value" id="adminPendingApprovals">0</span>
+                        </div>
+                        <div class="admin-stat-card">
+                            <span class="admin-stat-label">Total Materials</span>
+                            <span class="admin-stat-value" id="adminTotalMaterials">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Pending Tutor Approvals -->
+                    <div class="admin-subsection">
+                        <h4 class="admin-subtitle pending">⏳ Pending Tutor Approvals</h4>
+                        <div id="adminPendingTutorsList" class="admin-tutors-list">
+                            <p class="dashboard-muted">Loading pending tutors...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Approved Tutors -->
+                    <div class="admin-subsection">
+                        <h4 class="admin-subtitle approved">✅ Approved Tutors</h4>
+                        <div id="adminApprovedTutorsList" class="admin-tutors-list">
+                            <p class="dashboard-muted">Loading approved tutors...</p>
+                        </div>
+                    </div>
+
+                    <!-- Rejected Tutors -->
+                    <div class="admin-subsection">
+                        <h4 class="admin-subtitle rejected">❌ Rejected Tutors</h4>
+                        <div id="adminRejectedTutorsList" class="admin-tutors-list">
+                            <p class="dashboard-muted">Loading rejected tutors...</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Feedback and Courses Section -->
                 <div class="dashboard-bottom-section">
                     <!-- Feedback Section -->
@@ -549,6 +598,204 @@
                 console.error('Error loading dashboard:', error);
                 document.getElementById('totalDownloads').textContent = 'Error';
                 document.getElementById('activeStudents').textContent = 'Error';
+            }
+        }
+
+        // Admin Panel Functions
+        async function checkAdminAccess() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const API_URL = window.API_URL || 'http://localhost:3001';
+                
+                const response = await fetch(`${API_URL}/api/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    const user = result.user;
+                    
+                    // Show admin section if user is admin
+                    if (user.role === 'admin') {
+                        const adminSection = document.getElementById('adminSection');
+                        adminSection.classList.remove('dashboard-admin-panel-hidden');
+                        await loadAdminData();
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking admin access:', error);
+            }
+        }
+
+        async function loadAdminData() {
+            const token = localStorage.getItem('authToken');
+            const API_URL = window.API_URL || 'http://localhost:3001';
+            
+            try {
+                // Load stats and tutors in parallel
+                const [statsResponse, pendingResponse, approvedResponse, rejectedResponse] = await Promise.all([
+                    fetch(`${API_URL}/api/admin/stats`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch(`${API_URL}/api/admin/tutors/pending`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch(`${API_URL}/api/admin/tutors/approved`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch(`${API_URL}/api/admin/tutors/rejected`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                ]);
+
+                // Process stats
+                if (statsResponse.ok) {
+                    const statsData = await statsResponse.json();
+                    if (statsData.success) {
+                        document.getElementById('adminTotalTutors').textContent = statsData.stats.totalTutors;
+                        document.getElementById('adminTotalStudents').textContent = statsData.stats.totalStudents;
+                        document.getElementById('adminPendingApprovals').textContent = statsData.stats.pendingApprovals;
+                        document.getElementById('adminTotalMaterials').textContent = statsData.stats.totalMaterials;
+                    }
+                }
+
+                // Process pending tutors
+                if (pendingResponse.ok) {
+                    const pendingData = await pendingResponse.json();
+                    renderPendingTutors(pendingData.tutors || []);
+                }
+
+                // Process approved tutors
+                if (approvedResponse.ok) {
+                    const approvedData = await approvedResponse.json();
+                    renderApprovedTutors(approvedData.tutors || []);
+                }
+
+                // Process rejected tutors
+                if (rejectedResponse.ok) {
+                    const rejectedData = await rejectedResponse.json();
+                    renderRejectedTutors(rejectedData.tutors || []);
+                }
+            } catch (error) {
+                console.error('Error loading admin data:', error);
+            }
+        }
+
+        function renderPendingTutors(tutors) {
+            const container = document.getElementById('adminPendingTutorsList');
+            if (tutors.length === 0) {
+                container.innerHTML = '<p class="dashboard-muted">No pending tutors</p>';
+                return;
+            }
+
+            container.innerHTML = tutors.map(tutor => `
+                <div class="admin-tutor-card pending">
+                    <div class="admin-tutor-info">
+                        <div class="admin-tutor-name">${tutor.name || 'Unknown'}</div>
+                        <div class="admin-tutor-email">${tutor.email}</div>
+                        <div class="admin-tutor-group">Tutorial Group: ${tutor.tutorial_group || 'N/A'}</div>
+                    </div>
+                    <div class="admin-tutor-actions">
+                        <button class="admin-btn admin-btn-approve" onclick="approveTutor('${tutor.id}')">Approve</button>
+                        <button class="admin-btn admin-btn-reject" onclick="rejectTutor('${tutor.id}')">Reject</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderApprovedTutors(tutors) {
+            const container = document.getElementById('adminApprovedTutorsList');
+            if (tutors.length === 0) {
+                container.innerHTML = '<p class="dashboard-muted">No approved tutors</p>';
+                return;
+            }
+
+            container.innerHTML = tutors.map(tutor => `
+                <div class="admin-tutor-card approved">
+                    <div class="admin-tutor-info">
+                        <div class="admin-tutor-name">${tutor.name || 'Unknown'}</div>
+                        <div class="admin-tutor-email">${tutor.email}</div>
+                        <div class="admin-tutor-group">Tutorial Group: ${tutor.tutorial_group || 'N/A'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderRejectedTutors(tutors) {
+            const container = document.getElementById('adminRejectedTutorsList');
+            if (tutors.length === 0) {
+                container.innerHTML = '<p class="dashboard-muted">No rejected tutors</p>';
+                return;
+            }
+
+            container.innerHTML = tutors.map(tutor => `
+                <div class="admin-tutor-card rejected">
+                    <div class="admin-tutor-info">
+                        <div class="admin-tutor-name">${tutor.name || 'Unknown'}</div>
+                        <div class="admin-tutor-email">${tutor.email}</div>
+                        <div class="admin-tutor-group">Tutorial Group: ${tutor.tutorial_group || 'N/A'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function approveTutor(tutorId) {
+            const notes = prompt('Add approval notes (optional):');
+            
+            try {
+                const token = localStorage.getItem('authToken');
+                const API_URL = window.API_URL || 'http://localhost:3001';
+                
+                const response = await fetch(`${API_URL}/api/admin/tutors/approve/${tutorId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ notes })
+                });
+
+                if (response.ok) {
+                    showDashboardToast('Tutor approved successfully', 'success');
+                    await loadAdminData(); // Reload admin data
+                } else {
+                    showDashboardToast('Failed to approve tutor', 'error');
+                }
+            } catch (error) {
+                console.error('Error approving tutor:', error);
+                showDashboardToast('Error approving tutor', 'error');
+            }
+        }
+
+        async function rejectTutor(tutorId) {
+            const notes = prompt('Reason for rejection (required):');
+            if (!notes) {
+                alert('Please provide a reason for rejection.');
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('authToken');
+                const API_URL = window.API_URL || 'http://localhost:3001';
+                
+                const response = await fetch(`${API_URL}/api/admin/tutors/reject/${tutorId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ notes })
+                });
+
+                if (response.ok) {
+                    showDashboardToast('Tutor rejected', 'success');
+                    await loadAdminData(); // Reload admin data
+                } else {
+                    showDashboardToast('Failed to reject tutor', 'error');
+                }
+            } catch (error) {
+                console.error('Error rejecting tutor:', error);
+                showDashboardToast('Error rejecting tutor', 'error');
             }
         }
 

@@ -99,6 +99,7 @@ const materialsRoutes = require('./routes/materials');
 const feedbackRoutes = require('./routes/feedback');
 const studentAccessRoutes = require('./routes/student-access');
 const tutorApprovalsRoutes = require('./routes/tutor-approvals');
+const adminRoutes = require('./routes/admin');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -106,6 +107,7 @@ app.use('/api/materials', materialsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/student-access', studentAccessRoutes);
 app.use('/api/tutor-approvals', tutorApprovalsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

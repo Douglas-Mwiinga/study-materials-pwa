@@ -750,6 +750,177 @@ footer {
     color: #fff;
 }
 
+/* Admin Panel Styles */
+.dashboard-admin-panel {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    margin: 20px 0;
+    color: #ffffff;
+}
+
+.admin-section-title {
+    font-size: 1.4em;
+    margin-bottom: 20px;
+    color: #ffffff;
+    text-align: center;
+    font-weight: 600;
+}
+
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.admin-stat-card {
+    background: rgba(255, 255, 255, 0.15);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    padding: 16px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.admin-stat-label {
+    font-size: 0.9em;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.admin-stat-value {
+    font-size: 2em;
+    font-weight: bold;
+    color: #fff;
+}
+
+.admin-subsection {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.admin-subtitle {
+    font-size: 1.1em;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.admin-subtitle.pending {
+    color: #ff9800;
+}
+
+.admin-subtitle.approved {
+    color: #4caf50;
+}
+
+.admin-subtitle.rejected {
+    color: #f44336;
+}
+
+.admin-tutors-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.admin-tutor-card {
+    background: #f8f8f8;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid #ddd;
+}
+
+.admin-tutor-card.pending {
+    border-left-color: #ff9800;
+}
+
+.admin-tutor-card.approved {
+    border-left-color: #4caf50;
+}
+
+.admin-tutor-card.rejected {
+    border-left-color: #f44336;
+}
+
+.admin-tutor-info {
+    flex: 1;
+}
+
+.admin-tutor-name {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.admin-tutor-email {
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 2px;
+}
+
+.admin-tutor-group {
+    color: #999;
+    font-size: 0.85em;
+}
+
+.admin-tutor-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.admin-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.admin-btn-approve {
+    background: #4caf50;
+    color: #fff;
+}
+
+.admin-btn-approve:hover {
+    background: #45a049;
+}
+
+.admin-btn-reject {
+    background: #f44336;
+    color: #fff;
+}
+
+.admin-btn-reject:hover {
+    background: #da190b;
+}
+
+.admin-btn-view {
+    background: #2196f3;
+    color: #fff;
+}
+
+.admin-btn-view:hover {
+    background: #0b7dda;
+}
+
+.dashboard-admin-panel-hidden {
+    display: none;
+}
+
+
 /* Login/Form Error Messages */
 .error-message {
     color: #d32f2f;
