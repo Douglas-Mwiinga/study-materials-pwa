@@ -3,16 +3,19 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "description": "Smart Up - Study Materials PWA",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "serve:frontend": "cd frontend/pages && python -m http.server 8080 || npx http-server -p 8080",
+    "start:backend": "cd backend && npm start",
+    "dev:backend": "cd backend && npm run dev"
   },
-  "keywords": [],
+  "keywords": ["pwa", "education", "study-materials"],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

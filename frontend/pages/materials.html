@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materials - Smart Up</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <header>
+        <div class="container header-container materials-header">
+            <div class="logo">Smart Up</div>
+            <div class="user-chip" id="userChip">
+                <span class="user-email" id="userEmail">user@example.com</span>
+                <span class="user-role-pill" id="userRolePill">Role</span>
+            </div>
+            <button class="logout-btn" type="button">Log out</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="materials-layout">
+            <div class="container materials-container">
+                <!-- Left column: filters / search -->
+                <aside class="materials-sidebar">
+                    <h2 class="materials-title">Study Materials</h2>
+                    <p class="materials-subtitle" id="materialsSubtitle">
+                        Browse and download the resources shared by your tutors.
+                    </p>
+
+                    <label class="field-label" for="searchMaterials">Search</label>
+                    <input
+                        id="searchMaterials"
+                        class="materials-input"
+                        type="text"
+                        placeholder="Search material..."
+                    >
+                    
+                    <div id="materialsStats" style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 4px; font-size: 0.9em;">
+                        <p><strong>Materials:</strong> <span id="materialsCount">0</span></p>
+                    </div>
+                </aside>
+
+                <!-- Right column: role-specific panels -->
+                <section class="materials-main">
+                    <!-- Student download panel -->
+                    <div class="role-panel role-student" id="studentPanel">
+                        <h3 class="panel-title">Available materials</h3>
+                        <p class="panel-subtitle">
+                            Browse and download the resources shared by your tutors.
+                        </p>
+
+                        <div class="materials-list" id="studentMaterialsList">
+                            <p>Loading materials...</p>
+                        </div>
+                    </div>
+
+                    <!-- Tutor upload/manage panel -->
+                    <div class="role-panel role-tutor" id="tutorPanel">
+                        <h3 class="panel-title">Upload materials</h3>
+                        <p class="panel-subtitle">
+                            Share notes, assignments and helpful resources with your students.
+                        </p>
+
+                        <form class="upload-form">
+                            <label class="field-label" for="uploadCourse">Course</label>
+                            <select id="uploadCourse" class="materials-select">
+                                <option value="">Select course</option>
+                                <option value="MA">MA</option>
+                                <option value="PH">PH</option>
+                                <option value="CH">CH</option>
+                                <option value="ED">ED</option>
+                            </select>
+
+                            <label class="field-label" for="materialTitle">Title</label>
+                            <input
+                                id="materialTitle"
+                                class="materials-input"
+                                type="text"
+                                placeholder="e.g. Week 1 Lecture Notes"
+                            >
+
+                            <label class="field-label" for="materialDesc">Short description</label>
+                            <textarea
+                                id="materialDesc"
+                                class="materials-textarea"
+                                rows="3"
+                                placeholder="Add a short description for your students..."
+                            ></textarea>
+
+                            <label class="field-label" for="materialFile">File</label>
+                            <input id="materialFile" class="materials-file" type="file">
+
+                            <button type="submit" class="upload-btn">Upload</button>
+                            <div id="uploadMessage" class="error-message" style="display: none; margin-top: 15px; padding: 10px; border-radius: 4px;"></div>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="dashboard-nav">
+        <div class="container">
+            <div class="nav-items">
+                <a href="materials.html" class="nav-item nav-active">Materials</a>
+                <a href="dashboard.html" class="nav-item" id="dashboardNavItem" style="display: none;">Dashboard</a>
+                <a href="feedback.html" class="nav-item" id="feedbackNavItem">Feedback & Rating</a>
+                <a href="#" class="nav-item">Sign out</a>
+            </div>
+        </div>
+    </nav>
+
+    <footer>
+        <div class="container footer-container">
+            <span>&copy; 2026 Smart Up. All rights reserved.</span>
+        </div>
+    </footer>
+
+    <script src="../js/auth.js"></script>
+    <script src="../js/materials.js"></script>
+    <script src="../js/dashboard.js"></script>
+    <script>
+        // Fallback: define uploadMaterial directly if materials.js didn't load
+        (function () {
+            if (typeof window.uploadMaterial === 'function') return;
+
+            const API_URL_FALLBACK = window.API_URL || 'http://localhost:3001';
+
+            function getAuthTokenFallback() {
+                return localStorage.getItem('authToken');
+            }
+
+            window.uploadMaterial = async function (formData) {
+                try {
+                    const token = getAuthTokenFallback();
+                    if (!token) {
+                        throw new Error('Authentication required');
+                    }
+
+                    const response = await fetch(`${API_URL_FALLBACK}/api/materials`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                            // Don't set Content-Type - browser will set it with boundary for FormData
+                        },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.message || data.error || 'Failed to upload material');
+                    }
+
+                    return data;
+                } catch (error) {
+                    console.error('Fallback upload material error:', error);
+                    throw error;
+                }
+            };
+        })();
+
+        // Update user name in header
+        (function() {
+            function updateUsername() {
+                const usernameElement = document.getElementById('userEmail');
+                if (!usernameElement) return;
+                
+                // Try getUser() from auth.js first
+                if (typeof getUser === 'function') {
+                    const user = getUser();
+                    if (user && user.name) {
+                        usernameElement.textContent = user.name;
+                        return;
+                    }
+                }
+                
+                // Fallback: get from localStorage directly
+                const username = localStorage.getItem('username');
+                if (username) {
+                    usernameElement.textContent = username;
+                    return;
+                }
+                
+                // Last resort: parse user object and get name
+                const userStr = localStorage.getItem('user');
+                if (userStr) {
+                    try {
+                        const user = JSON.parse(userStr);
+                        if (user && user.name) {
+                            usernameElement.textContent = user.name;
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing user:', e);
+                    }
+                }
+            }
+            
+            // Run immediately
+            updateUsername();
+            
+            // Also run after a short delay to ensure auth.js is loaded
+            setTimeout(updateUsername, 100);
+        })();
+
+        // Simple role-based show/hide:
+        // Expected values: 'student' or 'tutor'
+        (function () {
+            var role = localStorage.getItem('role') || 'student';
+            var studentPanel = document.getElementById('studentPanel');
+            var tutorPanel = document.getElementById('tutorPanel');
+            var rolePill = document.getElementById('userRolePill');
+            var dashboardNavItem = document.getElementById('dashboardNavItem');
+            var feedbackNavItem = document.getElementById('feedbackNavItem');
+            var materialsSubtitle = document.getElementById('materialsSubtitle');
+
+            if (role === 'tutor') {
+                studentPanel.style.display = 'none';
+                tutorPanel.style.display = 'block';
+                rolePill.textContent = 'Tutor';
+                if (materialsSubtitle) {
+                    materialsSubtitle.textContent = 'Upload and manage your study materials.';
+                }
+                // Show Dashboard link for tutors
+                if (dashboardNavItem) {
+                    dashboardNavItem.style.display = 'inline-block';
+                }
+                // Hide Feedback & Rating link for tutors
+                if (feedbackNavItem) {
+                    feedbackNavItem.style.display = 'none';
+                }
+            } else {
+                studentPanel.style.display = 'block';
+                tutorPanel.style.display = 'none';
+                rolePill.textContent = 'Student';
+                if (materialsSubtitle) {
+                    materialsSubtitle.textContent = 'Browse and download the resources shared by your tutors.';
+                }
+                // Hide Dashboard link for students
+                if (dashboardNavItem) {
+                    dashboardNavItem.style.display = 'none';
+                }
+                // Show Feedback & Rating link for students
+                if (feedbackNavItem) {
+                    feedbackNavItem.style.display = 'inline-block';
+                }
+            }
+        })();
+
+        // Tutor Upload Form Handler
+        document.querySelector('.upload-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const course = document.getElementById('uploadCourse').value;
+            const title = document.getElementById('materialTitle').value;
+            const description = document.getElementById('materialDesc').value;
+            const fileInput = document.getElementById('materialFile');
+            const messageDiv = document.getElementById('uploadMessage');
+            const submitBtn = document.querySelector('.upload-btn');
+            
+            // Clear previous messages
+            messageDiv.style.display = 'none';
+            messageDiv.textContent = '';
+            
+            // Validate
+            if (!course || !title || !fileInput.files[0]) {
+                messageDiv.textContent = 'Please fill in course, title, and select a file';
+                messageDiv.style.color = '#d32f2f';
+                messageDiv.style.background = '#ffebee';
+                messageDiv.style.display = 'block';
+                return;
+            }
+            
+            // Create FormData
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('course', course);
+            formData.append('title', title);
+            if (description) formData.append('description', description);
+            
+            // Disable button
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
+            
+            try {
+                // Ensure uploadMaterial function is available (only use window reference)
+                const uploadFn = window.uploadMaterial;
+                
+                if (typeof uploadFn !== 'function') {
+                    throw new Error('Upload functionality is not loaded. Please refresh the page and try again.');
+                }
+                
+                const result = await uploadFn(formData);
+                messageDiv.textContent = 'Material uploaded successfully!';
+                messageDiv.style.color = '#155724';
+                messageDiv.style.background = '#d4edda';
+                messageDiv.style.display = 'block';
+                
+                // Reset form
+                document.querySelector('.upload-form').reset();
+                
+                // Reload materials list based on role (with delay to ensure DB persistence)
+                const role = localStorage.getItem('role');
+                setTimeout(() => {
+                    if (role === 'student') {
+                        if (typeof loadMaterials === 'function') {
+                            console.log('Reloading student materials...');
+                            loadMaterials();
+                        }
+                    } else if (role === 'tutor') {
+                        if (typeof loadTutorMaterials === 'function') {
+                            console.log('Reloading tutor materials...');
+                            loadTutorMaterials();
+                        }
+                    }
+                }, 500); // 500ms delay to ensure backend has persisted
+            } catch (error) {
+                console.error('Upload error:', error);
+                messageDiv.textContent = error.message || 'Upload failed. Please try again.';
+                messageDiv.style.color = '#d32f2f';
+                messageDiv.style.background = '#ffebee';
+                messageDiv.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload';
+            }
+        });
+
+        // Student Materials List Loader
+        async function loadMaterials() {
+            const role = localStorage.getItem('role');
+            const search = document.getElementById('searchMaterials')?.value || null;
+            const materialsList = role === 'student' 
+                ? document.getElementById('studentMaterialsList')
+                : null;
+            
+            if (role === 'student') {
+                if (!materialsList) return;
+                
+                try {
+                    materialsList.innerHTML = '<p>Loading materials...</p>';
+                    
+                    // Get tutorial group for filtering
+                    const tutorialGroup = getTutorialGroup();
+                    console.log('Filtering materials for tutorial group:', tutorialGroup);
+                    
+                    const result = await getMaterials(null, search);
+                    
+                    // Materials are already filtered by the backend based on tutorial group
+                    const materials = result.materials || [];
+                    
+                    // Update count
+                    const countElement = document.getElementById('materialsCount');
+                    if (countElement) {
+                        countElement.textContent = materials.length;
+                    }
+                    
+                    if (materials.length === 0) {
+                        materialsList.innerHTML = tutorialGroup 
+                            ? `<p>No materials available for your tutorial group (${tutorialGroup}).</p>`
+                            : '<p>No materials available.</p>';
+                        return;
+                    }
+                    
+                    materialsList.innerHTML = materials.map(material => {
+                        const date = new Date(material.created_at);
+                        const formattedDate = date.toLocaleDateString('en-GB', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric' 
+                        });
+                        const fileSize = material.file_size ? (material.file_size / 1024 / 1024).toFixed(2) + ' MB' : 'Unknown size';
+                        
+                        return `
+                            <article class="material-card">
+                                <h4 class="material-title">${material.title}</h4>
+                                <p class="material-desc">${material.description || 'No description'}</p>
+                                <div class="material-meta">
+                                    <span><strong>${material.course}</strong></span>
+                                    <span><strong>Date uploaded:</strong> ${formattedDate}</span>
+                                    <span><strong>File size:</strong> ${fileSize}</span>
+                                    <span><strong>File format:</strong> ${material.file_type || 'Unknown'}</span>
+                                </div>
+                                <div class="material-actions">
+                                    <button type="button" class="download-btn" data-material-id="${material.id}" data-file-url="${material.file_url}">Download</button>
+                                </div>
+                            </article>
+                        `;
+                    }).join('');
+                    
+                    // Add download button handlers
+                    materialsList.querySelectorAll('.download-btn').forEach(btn => {
+                        btn.addEventListener('click', async () => {
+                            const materialId = btn.dataset.materialId;
+                            const fileUrl = btn.dataset.fileUrl;
+                            
+                            try {
+                                // Increment download count
+                                await downloadMaterial(materialId);
+                                
+                                // Open download link
+                                window.open(fileUrl, '_blank');
+                            } catch (error) {
+                                console.error('Download error:', error);
+                                // Still try to download even if count update fails
+                                window.open(fileUrl, '_blank');
+                            }
+                        });
+                    });
+                } catch (error) {
+                    materialsList.innerHTML = `<p style="color: #d32f2f;">Error loading materials: ${error.message}</p>`;
+                }
+            } else if (role === 'tutor') {
+                // Load tutor's uploaded materials
+                await loadTutorMaterials();
+            }
+        }
+
+        // Load tutor's uploaded materials
+        async function loadTutorMaterials() {
+            const user = getUser();
+            if (!user || user.role !== 'tutor') {
+                console.warn('loadTutorMaterials: User is not a tutor or not logged in');
+                return;
+            }
+
+            try {
+                console.log('Loading tutor materials for user:', user.id);
+                const result = await getTutorMaterials(user.id);
+                const materials = result.materials || [];
+                
+                console.log('Tutor materials loaded:', materials.length, 'items');
+                
+                // Update count in sidebar
+                const countElement = document.getElementById('materialsCount');
+                if (countElement) {
+                    countElement.textContent = materials.length;
+                }
+                
+                // Display materials in the tutor panel
+                const tutorPanel = document.getElementById('tutorPanel');
+                if (tutorPanel && materials.length > 0) {
+                    // Find or create materials display area below the form
+                    let materialsDisplay = tutorPanel.querySelector('.tutor-materials-list');
+                    if (!materialsDisplay) {
+                        materialsDisplay = document.createElement('div');
+                        materialsDisplay.className = 'tutor-materials-list';
+                        materialsDisplay.style.marginTop = '30px';
+                        tutorPanel.appendChild(materialsDisplay);
+                    }
+                    
+                    materialsDisplay.innerHTML = `<h4>Your Uploaded Materials (${materials.length})</h4>` +
+                        materials.map(material => `
+                            <div style="padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="flex: 1;">
+                                    <strong>${material.title}</strong><br>
+                                    <small>Course: ${material.course} | Downloads: ${material.downloads_count || 0}</small>
+                                </div>
+                                <button type="button" class="delete-material-btn" data-material-id="${material.id}" style="padding: 6px 12px; background: #d32f2f; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85em; white-space: nowrap; margin-left: 10px;">Delete</button>
+                            </div>
+                        `).join('');
+                    
+                    // Add delete button event listeners
+                    materialsDisplay.querySelectorAll('.delete-material-btn').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            e.preventDefault();
+                            const materialId = btn.dataset.materialId;
+                            const materialDiv = btn.closest('div');
+                            const materialTitle = materialDiv.querySelector('strong').textContent;
+                            
+                            // Confirm deletion
+                            if (confirm(`Are you sure you want to delete "${materialTitle}"? This action cannot be undone.`)) {
+                                await handleDeleteMaterial(materialId);
+                            }
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading tutor materials:', error);
+                const countElement = document.getElementById('materialsCount');
+                if (countElement) {
+                    countElement.textContent = '0';
+                }
+            }
+        }
+
+        // Handle material deletion
+        async function handleDeleteMaterial(materialId) {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    alert('Authentication required. Please sign in again.');
+                    return;
+                }
+
+                const API_URL = window.API_URL || 'http://localhost:3001';
+                
+                console.log('Deleting material:', materialId);
+                const response = await fetch(`${API_URL}/api/materials/${materialId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || 'Failed to delete material');
+                }
+
+                console.log('Material deleted successfully');
+                alert('Material deleted successfully!');
+                
+                // Reload materials list to reflect deletion
+                await loadTutorMaterials();
+            } catch (error) {
+                console.error('Delete material error:', error);
+                alert(`Error deleting material: ${error.message}`);
+            }
+        }
+
+        // Load materials on page load (with delay to ensure scripts are loaded)
+        function initMaterials() {
+            const role = localStorage.getItem('role');
+            if (role === 'student') {
+                if (typeof loadMaterials === 'function') {
+                    loadMaterials();
+                } else {
+                    console.error('loadMaterials function not available');
+                }
+            } else if (role === 'tutor') {
+                if (typeof loadTutorMaterials === 'function') {
+                    loadTutorMaterials();
+                } else {
+                    console.error('loadTutorMaterials function not available');
+                }
+            }
+        }
+
+        // Wait for DOM and scripts to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMaterials);
+        } else {
+            // DOM is already loaded (scripts ran after)
+            setTimeout(initMaterials, 100);
+        }
+
+        // Search handler
+        document.getElementById('searchMaterials')?.addEventListener('input', (e) => {
+            // Debounce search
+            clearTimeout(window.searchTimeout);
+            window.searchTimeout = setTimeout(() => {
+                if (localStorage.getItem('role') === 'student') {
+                    loadMaterials();
+                }
+            }, 500);
+        });
+
+        // Logout button handler
+        document.querySelector('.logout-btn')?.addEventListener('click', async () => {
+            try {
+                await logout();
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                // Still redirect even if API call fails
+                window.location.href = 'login.html';
+            }
+        });
+
+        // Sign out link in navigation
+        const signOutLinks = document.querySelectorAll('a.nav-item');
+        signOutLinks.forEach(link => {
+            if (link.textContent.includes('Sign out')) {
+                link.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    try {
+                        await logout();
+                        window.location.href = 'login.html';
+                    } catch (error) {
+                        console.error('Logout error:', error);
+                        window.location.href = 'login.html';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+
+
