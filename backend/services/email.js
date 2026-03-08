@@ -78,7 +78,7 @@ const emailTemplates = {
                 ${appealReason}
             </div>
             <p>Please review this appeal and take appropriate action in the admin dashboard.</p>
-            <p><a href="http://localhost:3000/frontend/pages/admin.html" style="background: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">Go to Admin Dashboard</a></p>
+            <p><a href="http://localhost:3000/frontend/pages/dashboard.html" style="background: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">Go to Dashboard</a></p>
         `
     }),
 

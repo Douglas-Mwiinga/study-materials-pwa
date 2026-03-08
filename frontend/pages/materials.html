@@ -220,8 +220,27 @@
 
         // Simple role-based show/hide:
         // Expected values: 'student' or 'tutor'
+        function getCurrentUserRoles() {
+            const user = (typeof getUser === 'function' && getUser()) || null;
+            const rolesFromArray = Array.isArray(user?.roles) ? user.roles : [];
+            const legacyRole = user?.role ? [user.role] : [];
+            return [...new Set([...rolesFromArray, ...legacyRole])].filter(Boolean);
+        }
+
+        function hasAnyRole(allowedRoles) {
+            const roles = getCurrentUserRoles();
+            return allowedRoles.some((role) => roles.includes(role));
+        }
+
+        function resolveCurrentRole() {
+            if (hasAnyRole(['tutor', 'admin'])) {
+                return 'tutor';
+            }
+            return (typeof getUserRole === 'function' && getUserRole()) || localStorage.getItem('role') || null;
+        }
+
         (function () {
-            var role = localStorage.getItem('role') || 'student';
+            var role = resolveCurrentRole();
             var studentPanel = document.getElementById('studentPanel');
             var tutorPanel = document.getElementById('tutorPanel');
             var rolePill = document.getElementById('userRolePill');
@@ -229,7 +248,7 @@
             var feedbackNavItem = document.getElementById('feedbackNavItem');
             var materialsSubtitle = document.getElementById('materialsSubtitle');
 
-            if (role === 'tutor') {
+            if (role === 'admin' || role === 'tutor') {
                 studentPanel.style.display = 'none';
                 tutorPanel.style.display = 'block';
                 rolePill.textContent = 'Tutor';
@@ -315,14 +334,14 @@
                 document.querySelector('.upload-form').reset();
                 
                 // Reload materials list based on role (with delay to ensure DB persistence)
-                const role = localStorage.getItem('role');
+                const role = resolveCurrentRole();
                 setTimeout(() => {
                     if (role === 'student') {
                         if (typeof loadMaterials === 'function') {
                             console.log('Reloading student materials...');
                             loadMaterials();
                         }
-                    } else if (role === 'tutor') {
+                    } else if (role === 'tutor' || role === 'admin') {
                         if (typeof loadTutorMaterials === 'function') {
                             console.log('Reloading tutor materials...');
                             loadTutorMaterials();
@@ -343,7 +362,7 @@
 
         // Student Materials List Loader
         async function loadMaterials() {
-            const role = localStorage.getItem('role');
+            const role = resolveCurrentRole();
             const search = document.getElementById('searchMaterials')?.value || null;
             const materialsList = role === 'student' 
                 ? document.getElementById('studentMaterialsList')
@@ -425,7 +444,7 @@
                 } catch (error) {
                     materialsList.innerHTML = `<p style="color: #d32f2f;">Error loading materials: ${error.message}</p>`;
                 }
-            } else if (role === 'tutor') {
+            } else if (role === 'tutor' || role === 'admin') {
                 // Load tutor's uploaded materials
                 await loadTutorMaterials();
             }
@@ -434,8 +453,8 @@
         // Load tutor's uploaded materials
         async function loadTutorMaterials() {
             const user = getUser();
-            if (!user || user.role !== 'tutor') {
-                console.warn('loadTutorMaterials: User is not a tutor or not logged in');
+            if (!user || !hasAnyRole(['tutor', 'admin'])) {
+                console.warn('loadTutorMaterials: User is not tutor/admin or not logged in');
                 return;
             }
 
@@ -538,7 +557,7 @@
 
         // Check student approval status before loading materials
         async function checkStudentApproval() {
-            const role = localStorage.getItem('role');
+            const role = resolveCurrentRole();
             
             // Only check for students
             if (role !== 'student') {
@@ -603,7 +622,7 @@
 
         // Load materials on page load (with delay to ensure scripts are loaded)
         async function initMaterials() {
-            const role = localStorage.getItem('role');
+            const role = resolveCurrentRole();
             
             // For students, check approval status first
             if (role === 'student') {
@@ -618,7 +637,7 @@
                 } else {
                     console.error('loadMaterials function not available');
                 }
-            } else if (role === 'tutor') {
+            } else if (role === 'tutor' || role === 'admin') {
                 if (typeof loadTutorMaterials === 'function') {
                     loadTutorMaterials();
                 } else {
@@ -640,7 +659,7 @@
             // Debounce search
             clearTimeout(window.searchTimeout);
             window.searchTimeout = setTimeout(() => {
-                if (localStorage.getItem('role') === 'student') {
+                if (resolveCurrentRole() === 'student') {
                     loadMaterials();
                 }
             }, 500);

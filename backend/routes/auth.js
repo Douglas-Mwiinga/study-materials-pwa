@@ -6,6 +6,19 @@ require('dotenv').config();
 const { supabaseAdmin } = require('../config/supabase');
 const emailService = require('../services/email');
 
+function normalizeRoles(profile) {
+    const rolesFromArray = Array.isArray(profile?.roles) ? profile.roles : [];
+    const legacyRole = profile?.role ? [profile.role] : [];
+    return [...new Set([...rolesFromArray, ...legacyRole])].filter(Boolean);
+}
+
+function primaryRoleFromRoles(roles = []) {
+    if (roles.includes('admin')) return 'admin';
+    if (roles.includes('tutor')) return 'tutor';
+    if (roles.includes('student')) return 'student';
+    return null;
+}
+
 // Setup multer for file uploads (keep in memory)
 const upload = multer({ 
     storage: multer.memoryStorage(),
@@ -189,6 +202,7 @@ router.post('/signup', upload.any(), async (req, res) => {
                 email: email,
                 name: name,
                 role: role,
+                roles: [role],
                 tutorialGroup: resolvedTutorialGroup
             }
         });
@@ -235,19 +249,35 @@ router.post('/login', async (req, res) => {
 
         const userId = authData.user.id;
 
-        // Get user profile (including role and name)
-        const { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, email, name, role, tutorial_group')
+        let profile = null;
+
+        const { data: profileWithRoles, error: profileWithRolesError } = await supabaseAdmin
+            .from('profiles_with_roles')
+            .select('*')
             .eq('id', userId)
             .single();
 
-        if (profileError || !profile) {
-            return res.status(500).json({
-                error: 'Profile not found',
-                message: 'User account exists but profile is missing'
-            });
+        if (!profileWithRolesError && profileWithRoles) {
+            profile = profileWithRoles;
+        } else {
+            const { data: fallbackProfile, error: fallbackProfileError } = await supabaseAdmin
+                .from('profiles')
+                .select('id, email, name, role, tutorial_group')
+                .eq('id', userId)
+                .single();
+
+            if (fallbackProfileError || !fallbackProfile) {
+                return res.status(500).json({
+                    error: 'Profile not found',
+                    message: 'User account exists but profile is missing'
+                });
+            }
+
+            profile = fallbackProfile;
         }
+
+        const roles = normalizeRoles(profile);
+        const role = primaryRoleFromRoles(roles) || profile.role || null;
 
         // Return success with user data and session
         res.json({
@@ -257,7 +287,8 @@ router.post('/login', async (req, res) => {
                 id: profile.id,
                 email: profile.email,
                 name: profile.name,
-                role: profile.role,
+                role: role,
+                roles: roles,
                 tutorialGroup: profile.tutorial_group
             },
             session: {
@@ -336,23 +367,45 @@ router.get('/me', async (req, res) => {
             });
         }
 
-        // Get user profile
-        const { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, email, name, role, tutorial_group, created_at, tutor_status, tutor_status_notes, tutor_approved_at')
+        let profile = null;
+
+        const { data: profileWithRoles, error: profileWithRolesError } = await supabaseAdmin
+            .from('profiles_with_roles')
+            .select('*')
             .eq('id', user.id)
             .single();
 
-        if (profileError || !profile) {
-            return res.status(404).json({
-                error: 'Profile not found',
-                message: 'User profile does not exist'
-            });
+        if (!profileWithRolesError && profileWithRoles) {
+            profile = profileWithRoles;
+        } else {
+            const { data: fallbackProfile, error: fallbackProfileError } = await supabaseAdmin
+                .from('profiles')
+                .select('id, email, name, role, tutorial_group, created_at, tutor_status, tutor_status_notes, tutor_approved_at')
+                .eq('id', user.id)
+                .single();
+
+            if (fallbackProfileError || !fallbackProfile) {
+                return res.status(404).json({
+                    error: 'Profile not found',
+                    message: 'User profile does not exist'
+                });
+            }
+
+            profile = fallbackProfile;
         }
+
+        const roles = normalizeRoles(profile);
+        const role = primaryRoleFromRoles(roles) || profile.role || null;
+
+        const responseUser = {
+            ...profile,
+            role,
+            roles
+        };
 
         res.json({
             success: true,
-            user: profile
+            user: responseUser
         });
 
     } catch (error) {

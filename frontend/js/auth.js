@@ -7,6 +7,19 @@ if (typeof window.API_URL === 'undefined') {
 }
 const API_URL = window.API_URL;
 
+function normalizeRoles(user) {
+    const rolesFromArray = Array.isArray(user?.roles) ? user.roles : [];
+    const legacyRole = user?.role ? [user.role] : [];
+    return [...new Set([...rolesFromArray, ...legacyRole])].filter(Boolean);
+}
+
+function getPrimaryRoleFromRoles(roles = []) {
+    if (roles.includes('admin')) return 'admin';
+    if (roles.includes('tutor')) return 'tutor';
+    if (roles.includes('student')) return 'student';
+    return null;
+}
+
 /**
  * Sign up a new user
  * @param {string} email - User email
@@ -84,10 +97,18 @@ async function login(email, password) {
             console.warn('⚠ Server did not return session tokens', data);
         }
         if (data.user) {
-            localStorage.setItem('user', JSON.stringify(data.user));
-            localStorage.setItem('role', data.user.role);
-            localStorage.setItem('username', data.user.name || data.user.email);
-            console.log('✓ User data stored', { role: data.user.role, username: data.user.name || data.user.email });
+            const roles = normalizeRoles(data.user);
+            const role = getPrimaryRoleFromRoles(roles) || data.user.role || null;
+            const authUser = {
+                ...data.user,
+                role,
+                roles
+            };
+
+            localStorage.setItem('user', JSON.stringify(authUser));
+            localStorage.setItem('role', role || '');
+            localStorage.setItem('username', authUser.name || authUser.email);
+            console.log('✓ User data stored', { role, roles, username: authUser.name || authUser.email });
         } else {
             console.warn('⚠ Server did not return user data', data);
         }
@@ -186,7 +207,14 @@ function isAuthenticated() {
  * @returns {string|null} User role or null
  */
 function getUserRole() {
-    return localStorage.getItem('role');
+    const user = getUser();
+    if (!user) {
+        return localStorage.getItem('role');
+    }
+
+    const roles = normalizeRoles(user);
+    const derivedRole = getPrimaryRoleFromRoles(roles) || user.role || null;
+    return derivedRole || localStorage.getItem('role');
 }
 
 /**
@@ -213,7 +241,9 @@ function getTutorialGroup() {
 function redirectByRole() {
     const role = getUserRole();
     
-    if (role === 'tutor') {
+    if (role === 'admin') {
+        window.location.href = 'dashboard.html';
+    } else if (role === 'tutor') {
         window.location.href = 'dashboard.html';
     } else if (role === 'student') {
         window.location.href = 'materials.html';

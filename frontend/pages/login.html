@@ -37,6 +37,11 @@
     </footer>
     <script src="../js/auth.js"></script>
     <script>
+        function normalizeRoles(user = {}) {
+            const fromArray = Array.isArray(user.roles) ? user.roles : [];
+            return [...new Set([...fromArray, user.role].filter(Boolean))];
+        }
+
         document.querySelector('.login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -55,11 +60,14 @@
             
             try {
                 const response = await login(email, password);
+                const roles = normalizeRoles(response?.user || {});
+                const hasAdmin = roles.includes('admin');
+                const hasTutor = roles.includes('tutor');
                 
                 // Success - redirect based on role
-                const role = response.user?.role || getUserRole();
-                
-                if (role === 'tutor') {
+                if (hasTutor) {
+                    window.location.href = 'dashboard.html';
+                } else if (hasAdmin) {
                     window.location.href = 'dashboard.html';
                 } else {
                     window.location.href = 'materials.html';

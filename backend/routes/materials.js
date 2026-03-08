@@ -64,6 +64,16 @@ async function getUserProfile(userId) {
     return { data, error };
 }
 
+function normalizeRoles(user = {}) {
+  const arr = Array.isArray(user.roles) ? user.roles : [];
+  return [...new Set([...arr, user.role].filter(Boolean))];
+}
+
+function canUploadMaterials(user = {}) {
+  const roles = normalizeRoles(user);
+  return roles.includes('tutor') || roles.includes('admin');
+}
+
 // =============================================
 // GET /api/materials - List all materials
 // =============================================
@@ -203,133 +213,134 @@ router.get('/', async (req, res) => {
 // POST /api/materials - Upload a new material
 // =============================================
 router.post('/', upload.single('file'), async (req, res) => {
-    try {
-        // Check authentication
-        const userId = await getUserIdFromToken(req.headers.authorization);
-        if (!userId) {
-            return res.status(401).json({
-                error: 'Unauthorized',
-                message: 'Authentication required'
-            });
-        }
-
-        // Get user profile to check role
-        const { data: profile, error: profileError } = await getUserProfile(userId);
-        if (profileError || !profile) {
-            return res.status(404).json({
-                error: 'Profile not found',
-                message: 'User profile does not exist'
-            });
-        }
-
-        // Only tutors can upload
-        if (profile.role !== 'tutor') {
-            return res.status(403).json({
-                error: 'Forbidden',
-                message: 'Only tutors can upload materials'
-            });
-        }
-
-        // Check tutor approval status
-        if (profile.tutor_status !== 'approved') {
-            return res.status(403).json({
-                error: 'Tutor not approved',
-                message: `Your tutor account is ${profile.tutor_status}. You must be approved by an admin to upload materials.`
-            });
-        }
-
-        // Check if tutor has a tutorial group assigned
-        if (!profile.tutorial_group) {
-            return res.status(400).json({
-                error: 'No tutorial group assigned',
-                message: 'You must be assigned to a tutorial group before uploading materials. Please contact an administrator.'
-            });
-        }
-
-        // Validate required fields
-        const { course, title, description } = req.body;
-        if (!course || !title) {
-            return res.status(400).json({
-                error: 'Missing required fields',
-                message: 'Course and title are required'
-            });
-        }
-
-        // Check if file was uploaded
-        if (!req.file) {
-            return res.status(400).json({
-                error: 'No file uploaded',
-                message: 'Please select a file to upload'
-            });
-        }
-
-        const file = req.file;
-        const fileName = `${Date.now()}-${file.originalname}`;
-        const filePath = `materials/${userId}/${fileName}`;
-
-        // Upload file to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabaseAdmin
-            .storage
-            .from('materials')
-            .upload(filePath, file.buffer, {
-                contentType: file.mimetype,
-                upsert: false
-            });
-
-        if (uploadError) {
-            return res.status(500).json({
-                error: 'File upload failed',
-                message: uploadError.message
-            });
-        }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabaseAdmin
-            .storage
-            .from('materials')
-            .getPublicUrl(filePath);
-
-        // Save material record to database
-        const { data: material, error: dbError } = await supabaseAdmin
-            .from('materials')
-            .insert({
-                tutor_id: userId,
-                course: course,
-                title: title,
-                description: description || null,
-                file_name: file.originalname,
-                file_url: publicUrl,
-                file_size: file.size,
-                file_type: file.mimetype,
-                tutorial_group: profile.tutorial_group,
-                downloads_count: 0
-            })
-            .select()
-            .single();
-
-        if (dbError) {
-            // If database insert fails, try to delete uploaded file
-            await supabaseAdmin.storage.from('materials').remove([filePath]);
-            
-            return res.status(500).json({
-                error: 'Failed to save material',
-                message: dbError.message
-            });
-        }
-
-        res.status(201).json({
-            success: true,
-            message: 'Material uploaded successfully',
-            material: material
-        });
-
-    } catch (error) {
-        console.error('Upload material error:', error);
-        res.status(500).json({
-            error: 'Internal server error',
-            message: error.message
+  try {
+    // Check authentication
+    const userId = await getUserIdFromToken(req.headers.authorization);
+    if (!userId) {
+        return res.status(401).json({
+            error: 'Unauthorized',
+            message: 'Authentication required'
         });
     }
+
+    // Get user profile to check role
+    const { data: profile, error: profileError } = await getUserProfile(userId);
+    if (profileError || !profile) {
+        return res.status(404).json({
+            error: 'Profile not found',
+            message: 'User profile does not exist'
+        });
+    }
+
+    const authUser = {
+      role: profile?.role || req.user?.role,
+      roles: profile?.roles || req.user?.roles || []
+    };
+
+    if (!canUploadMaterials(authUser)) {
+      return res.status(403).json({ error: 'Only tutors or admins can upload materials' });
+    }
+
+    // Optional: enforce tutor_status only for pure tutor users, not admins
+    const roles = normalizeRoles(authUser);
+    if (roles.includes('tutor') && !roles.includes('admin')) {
+      if (profile?.tutor_status && profile.tutor_status !== 'approved') {
+        return res.status(403).json({ error: 'Tutor account is not approved yet' });
+      }
+    }
+
+    // Check if tutor has a tutorial group assigned
+    if (!profile.tutorial_group) {
+        return res.status(400).json({
+            error: 'No tutorial group assigned',
+            message: 'You must be assigned to a tutorial group before uploading materials. Please contact an administrator.'
+        });
+    }
+
+    // Validate required fields
+    const { course, title, description } = req.body;
+    if (!course || !title) {
+        return res.status(400).json({
+            error: 'Missing required fields',
+            message: 'Course and title are required'
+        });
+    }
+
+    // Check if file was uploaded
+    if (!req.file) {
+        return res.status(400).json({
+            error: 'No file uploaded',
+            message: 'Please select a file to upload'
+        });
+    }
+
+    const file = req.file;
+    const fileName = `${Date.now()}-${file.originalname}`;
+    const filePath = `materials/${userId}/${fileName}`;
+
+    // Upload file to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabaseAdmin
+        .storage
+        .from('materials')
+        .upload(filePath, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false
+        });
+
+    if (uploadError) {
+        return res.status(500).json({
+            error: 'File upload failed',
+            message: uploadError.message
+        });
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabaseAdmin
+        .storage
+        .from('materials')
+        .getPublicUrl(filePath);
+
+    // Save material record to database
+    const { data: material, error: dbError } = await supabaseAdmin
+        .from('materials')
+        .insert({
+            tutor_id: userId,
+            course: course,
+            title: title,
+            description: description || null,
+            file_name: file.originalname,
+            file_url: publicUrl,
+            file_size: file.size,
+            file_type: file.mimetype,
+            tutorial_group: profile.tutorial_group,
+            downloads_count: 0
+        })
+        .select()
+        .single();
+
+    if (dbError) {
+        // If database insert fails, try to delete uploaded file
+        await supabaseAdmin.storage.from('materials').remove([filePath]);
+        
+        return res.status(500).json({
+            error: 'Failed to save material',
+            message: dbError.message
+        });
+    }
+
+    res.status(201).json({
+        success: true,
+        message: 'Material uploaded successfully',
+        material: material
+    });
+
+  } catch (error) {
+    console.error('Upload material error:', error);
+    res.status(500).json({
+        error: 'Internal server error',
+        message: error.message
+    });
+  }
 });
 
 // =============================================
