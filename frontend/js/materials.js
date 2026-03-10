@@ -87,7 +87,7 @@ async function uploadMaterial(formData) {
             console.log('Debug info:', {
                 authToken: localStorage.getItem('authToken'),
                 user: localStorage.getItem('user'),
-                role: (typeof getUserRole === 'function' && getUserRole()) || localStorage.getItem('role')
+                role: (typeof window.getUserRole === 'function' && window.getUserRole()) || localStorage.getItem('role')
             });
             throw new Error('Authentication required — please sign in first');
         }
