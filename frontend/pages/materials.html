@@ -89,7 +89,7 @@
                             ></textarea>
 
                             <label class="field-label" for="materialFile">File</label>
-                            <input id="materialFile" class="materials-file" type="file">
+                            <input id="materialFile" class="materials-file" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg,.mp4,.mov,.webm,.m4v,video/mp4,video/quicktime,video/webm,video/x-m4v">
 
                             <button type="submit" class="upload-btn">Upload</button>
                             <div id="uploadMessage" class="error-message upload-message-hidden"></div>
@@ -284,6 +284,23 @@
         // Tutor Upload Form Handler
         document.querySelector('.upload-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            const MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024; // 500MB
+            const ALLOWED_UPLOAD_MIME_TYPES = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'text/plain',
+                'image/png',
+                'image/jpeg',
+                'image/jpg',
+                'video/mp4',
+                'video/quicktime',
+                'video/webm',
+                'video/x-m4v'
+            ];
             
             const course = document.getElementById('uploadCourse').value;
             const title = document.getElementById('materialTitle').value;
@@ -304,10 +321,28 @@
                 messageDiv.style.display = 'block';
                 return;
             }
+
+            const selectedFile = fileInput.files[0];
+
+            if (!ALLOWED_UPLOAD_MIME_TYPES.includes(selectedFile.type)) {
+                messageDiv.textContent = 'File type not allowed. Allowed types: PDF, DOC, DOCX, XLS, XLSX, TXT, PNG, JPG, MP4, MOV, WEBM, M4V';
+                messageDiv.style.color = '#d32f2f';
+                messageDiv.style.background = '#ffebee';
+                messageDiv.style.display = 'block';
+                return;
+            }
+
+            if (selectedFile.size > MAX_UPLOAD_SIZE_BYTES) {
+                messageDiv.textContent = 'File is too large. Maximum allowed size is 500MB per file.';
+                messageDiv.style.color = '#d32f2f';
+                messageDiv.style.background = '#ffebee';
+                messageDiv.style.display = 'block';
+                return;
+            }
             
             // Create FormData
             const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+            formData.append('file', selectedFile);
             formData.append('course', course);
             formData.append('title', title);
             if (description) formData.append('description', description);

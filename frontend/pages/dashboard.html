@@ -163,6 +163,29 @@
                         }
                     }
 
+                    function updateStatusCardUI(tutorStatus = 'pending') {
+                        const statusBadge = document.getElementById('statusBadge');
+                        const card = document.getElementById('statusCardContainer');
+                        if (!statusBadge || !card) return;
+
+                        let statusColor = '#667eea';
+                        if (tutorStatus === 'approved') {
+                            statusBadge.textContent = 'APPROVED';
+                            statusColor = '#4caf50';
+                        } else if (tutorStatus === 'pending') {
+                            statusBadge.textContent = 'PENDING REVIEW';
+                            statusColor = '#ff9800';
+                        } else if (tutorStatus === 'rejected') {
+                            statusBadge.textContent = 'REJECTED';
+                            statusColor = '#f44336';
+                        } else {
+                            statusBadge.textContent = String(tutorStatus).toUpperCase();
+                        }
+
+                        card.style.background = `linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%)`;
+                        card.style.color = '#fff';
+                    }
+
                     async function loadTutorStatusModal() {
                         try {
                             const token = localStorage.getItem('authToken');
@@ -196,16 +219,17 @@
                             if (user.tutor_status === 'pending') {
                                 statusHTML += `
                                     <div class="appeal-section">
-                                        <p class="appeal-message">Still pending? Contact support or check your email for updates.</p>
+                                        <p class="appeal-message">Your application is currently under review. Appeals are available only for rejected accounts.</p>
+                                        <button type="button" id="pendingAppealBtn" class="appeal-submit-btn">Submit Appeals</button>
+                                        <div id="appealMessage" class="appeal-message"></div>
                                     </div>
                                 `;
                             } else if (user.tutor_status === 'rejected') {
                                 statusHTML += `
                                     <div class="appeal-section">
-                                        <h3 class="appeal-title">Submit an Appeal</h3>
                                         <form id="appealForm" class="appeal-form">
                                             <textarea id="appealNotes" name="appealNotes" placeholder="Tell us why you should be approved..." class="appeal-textarea"></textarea>
-                                            <button type="submit" class="appeal-submit-btn">Submit Appeal</button>
+                                            <button type="submit" class="appeal-submit-btn">Submit Appeals</button>
                                         </form>
                                         <div id="appealMessage" class="appeal-message"></div>
                                     </div>
@@ -215,6 +239,17 @@
                             statusHTML += '</div>';
                             
                             document.getElementById('tutorStatusContent').innerHTML = statusHTML;
+
+                            if (user.tutor_status === 'pending') {
+                                const pendingAppealBtn = document.getElementById('pendingAppealBtn');
+                                const pendingAppealMessage = document.getElementById('appealMessage');
+                                if (pendingAppealBtn && pendingAppealMessage) {
+                                    pendingAppealBtn.addEventListener('click', function() {
+                                        pendingAppealMessage.textContent = 'Appeals can be submitted only when account status is rejected.';
+                                        pendingAppealMessage.className = 'appeal-message error';
+                                    });
+                                }
+                            }
                             
                             // Set up appeal form if rejected
                             if (user.tutor_status === 'rejected') {
@@ -242,8 +277,13 @@
                                                 document.getElementById('appealMessage').textContent = 'Appeal submitted successfully!';
                                                 document.getElementById('appealMessage').className = 'appeal-message success';
                                                 appealForm.reset();
+                                                updateStatusCardUI('pending');
+                                                setTimeout(() => {
+                                                    loadTutorStatusModal();
+                                                }, 700);
                                             } else {
-                                                document.getElementById('appealMessage').textContent = 'Failed to submit appeal.';
+                                                const errorData = await response.json().catch(() => ({}));
+                                                document.getElementById('appealMessage').textContent = errorData.message || 'Failed to submit appeal.';
                                                 document.getElementById('appealMessage').className = 'appeal-message error';
                                             }
                                         } catch (error) {
@@ -820,6 +860,7 @@
                         <div class="admin-tutor-name">${tutor.name || 'Unknown'}</div>
                         <div class="admin-tutor-email">${tutor.email}</div>
                         <div class="admin-tutor-group">Tutorial Group: ${tutor.tutorial_group || 'N/A'}</div>
+                        ${tutor.tutor_status_notes ? `<div class="admin-tutor-notes">Notes: ${tutor.tutor_status_notes}</div>` : ''}
                     </div>
                     <div class="admin-tutor-actions">
                         <button class="admin-btn admin-btn-approve" onclick="approveTutor('${tutor.id}')">Approve</button>
@@ -842,6 +883,7 @@
                         <div class="admin-tutor-name">${tutor.name || 'Unknown'}</div>
                         <div class="admin-tutor-email">${tutor.email}</div>
                         <div class="admin-tutor-group">Tutorial Group: ${tutor.tutorial_group || 'N/A'}</div>
+                        ${tutor.tutor_status_notes ? `<div class="admin-tutor-notes">Notes: ${tutor.tutor_status_notes}</div>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -860,6 +902,7 @@
                         <div class="admin-tutor-name">${tutor.name || 'Unknown'}</div>
                         <div class="admin-tutor-email">${tutor.email}</div>
                         <div class="admin-tutor-group">Tutorial Group: ${tutor.tutorial_group || 'N/A'}</div>
+                        ${tutor.tutor_status_notes ? `<div class="admin-tutor-notes">Reason: ${tutor.tutor_status_notes}</div>` : ''}
                     </div>
                 </div>
             `).join('');

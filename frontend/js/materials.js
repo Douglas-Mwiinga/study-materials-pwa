@@ -4,6 +4,23 @@ if (typeof window.API_URL === 'undefined') {
     window.API_URL = 'http://localhost:3001';
 }
 
+const MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024; // 500MB per file
+const ALLOWED_UPLOAD_MIME_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+    'video/mp4',
+    'video/quicktime',
+    'video/webm',
+    'video/x-m4v'
+];
+
 
 /**
  * Get authentication token from localStorage
@@ -20,6 +37,11 @@ function getAuthToken() {
  */
 async function getMaterials(course = null, search = null) {
     try {
+        const token = getAuthToken();
+        if (!token) {
+            throw new Error('Authentication required');
+        }
+
         let url = `${window.API_URL}/api/materials`;
         const params = new URLSearchParams();
         
@@ -33,8 +55,10 @@ async function getMaterials(course = null, search = null) {
         const response = await fetch(url, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json'
-            }
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            credentials: 'include'
         });
 
         const data = await response.json();
@@ -68,6 +92,19 @@ async function uploadMaterial(formData) {
             throw new Error('Authentication required — please sign in first');
         }
 
+        const file = formData?.get('file');
+        if (!file) {
+            throw new Error('Please select a file to upload');
+        }
+
+        if (!ALLOWED_UPLOAD_MIME_TYPES.includes(file.type)) {
+            throw new Error('File type not allowed. Allowed types: PDF, DOC, DOCX, XLS, XLSX, TXT, PNG, JPG, MP4, MOV, WEBM, M4V');
+        }
+
+        if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+            throw new Error('File is too large. Maximum allowed size is 500MB per file.');
+        }
+
         console.log('✓ Auth token found, uploading material...');
         const response = await fetch(`${window.API_URL}/api/materials`, {
             method: 'POST',
@@ -98,11 +135,18 @@ async function uploadMaterial(formData) {
  */
 async function getMaterial(materialId) {
     try {
+        const token = getAuthToken();
+        if (!token) {
+            throw new Error('Authentication required');
+        }
+
         const response = await fetch(`${window.API_URL}/api/materials/${materialId}`, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json'
-            }
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            credentials: 'include'
         });
 
         const data = await response.json();

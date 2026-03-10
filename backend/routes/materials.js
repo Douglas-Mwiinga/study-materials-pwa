@@ -5,30 +5,34 @@ const multer = require('multer');
 const { supabaseAdmin } = require('../config/supabase');
 require('dotenv').config();
 
+const MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024; // 500MB per file
+const ALLOWED_UPLOAD_MIME_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+    'text/plain',
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+    'video/mp4',
+    'video/quicktime', // .mov (common iPhone export)
+    'video/webm',
+    'video/x-m4v'
+];
+
 // Configure multer for file uploads (memory storage)
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
-        fileSize: 50 * 1024 * 1024 // 50MB limit
+        fileSize: MAX_UPLOAD_SIZE_BYTES
     },
     fileFilter: (req, file, cb) => {
-        // Allow common document types
-        const allowedTypes = [
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-            'text/plain',
-            'image/png',
-            'image/jpeg',
-            'image/jpg'
-        ];
-        
-        if (allowedTypes.includes(file.mimetype)) {
+        if (ALLOWED_UPLOAD_MIME_TYPES.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('File type not allowed. Allowed types: PDF, DOC, DOCX, XLS, XLSX, TXT, PNG, JPG'));
+            cb(new Error('File type not allowed. Allowed types: PDF, DOC, DOCX, XLS, XLSX, TXT, PNG, JPG, MP4, MOV, WEBM, M4V'));
         }
     }
 });
