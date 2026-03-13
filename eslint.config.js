@@ -43,6 +43,17 @@ export default [
   },
 
   {
+    files: ['scripts/**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node
+      }
+    }
+  },
+
+  {
     files: ['vite.config.js'],
     languageOptions: {
       ecmaVersion: 2022,
@@ -50,9 +61,6 @@ export default [
       globals: {
         ...globals.node
       }
-    },
-    rules: {
-      'no-console': 'off'
     }
   }
 ];

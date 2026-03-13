@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+            <link rel="icon" type="image/png" href="/icons/icon-192.png">
+            <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
     <meta charset="UTF-8">
+    <link rel="manifest" href="/manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Feedback & Rating - Smart Up</title>
     <link rel="stylesheet" href="../css/styles.css">
@@ -16,7 +20,37 @@
             </div>
             <button class="logout-btn" type="button">Log out</button>
         </div>
+
     </header>
+
+    <script>
+    // Define submitFeedback function
+    async function submitFeedback(materialId, rating, comment) {
+        const token = localStorage.getItem('authToken');
+        const baseUrl = window.API_URL || 'http://localhost:3001';
+
+        const res = await fetch(`${baseUrl}/api/feedback`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+                material_id: materialId,
+                rating: Number(rating),
+                comment: comment
+            }),
+            credentials: 'include'
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to submit feedback');
+        }
+
+        return res.json();
+    }
+    </script>
 
     <main>
         <section class="feedback-section">
@@ -65,7 +99,7 @@
                     </div>
 
                     <button type="submit" class="feedback-submit-btn">Submit Feedback</button>
-                    <div id="feedbackMessage" class="error-message" style="display: none; margin-top: 15px; padding: 10px; border-radius: 4px;"></div>
+                    <div id="feedbackMessage" class="error-message feedback-message-box"></div>
                 </form>
 
                 <div class="feedback-info">
@@ -95,12 +129,63 @@
     <script type="module" src="../js/materials.js"></script>
     <script type="module" src="../js/feedback.js"></script>
     <script>
+        function safeGetUser() {
+            if (typeof window.getUser === 'function') {
+                return window.getUser();
+            }
+
+            const raw = localStorage.getItem('user');
+            if (!raw) return null;
+
+            try {
+                return JSON.parse(raw);
+            } catch {
+                return null;
+            }
+        }
+
+        async function safeGetMaterials() {
+            if (typeof window.getMaterials === 'function') {
+                return window.getMaterials();
+            }
+
+            try {
+                const mod = await import('../js/materials.js');
+                if (typeof mod.getMaterials === 'function') {
+                    return mod.getMaterials();
+                }
+                if (mod?.default && typeof mod.default.getMaterials === 'function') {
+                    return mod.default.getMaterials();
+                }
+            } catch (_) {
+                // Continue to direct API fallback
+            }
+
+            const token = localStorage.getItem('authToken');
+            const baseUrl = window.API_URL || 'http://localhost:3001';
+
+            const res = await fetch(`${baseUrl}/api/materials`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
+                credentials: 'include'
+            });
+
+            if (!res.ok) {
+                throw new Error(`Failed to load materials (${res.status})`);
+            }
+
+            return res.json();
+        }
+
         // Update user name in header
         (function() {
             const usernameElement = document.getElementById('userEmail');
             if (!usernameElement) return;
             
-            const user = getUser();
+            const user = safeGetUser();
             if (user && user.name) {
                 usernameElement.textContent = user.name;
                 return;
@@ -132,7 +217,7 @@
             if (!select) return;
             
             try {
-                const result = await getMaterials();
+                const result = await safeGetMaterials();
                 if (result.materials && result.materials.length > 0) {
                     // Clear existing options except first
                     select.innerHTML = '<option value="">Choose a material to rate</option>';

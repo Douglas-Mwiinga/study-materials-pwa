@@ -1,3 +1,16 @@
+// Middleware to check if user is a tutor or admin
+function requireTutorOrAdmin(req, res, next) {
+    const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+    const legacyRole = req.user?.role ? [req.user.role] : [];
+    const allRoles = [...new Set([...roles, ...legacyRole])];
+    if (allRoles.includes('tutor') || allRoles.includes('admin')) {
+        return next();
+    }
+    return res.status(403).json({
+        error: 'Forbidden',
+        message: 'Only tutors or admins can access this resource'
+    });
+}
 // Student Access Management Routes
 // For tutors to approve/reject student access and manage settings
 
@@ -7,7 +20,10 @@ require('dotenv').config();
 const { supabaseAdmin } = require('../config/supabase');
 const emailService = require('../services/email');
 
-// Middleware to check if user is authenticated
+const DEFAULT_DURATION_DAYS = 90;
+const MAX_DURATION_DAYS = 3650;
+
+// Middleware to check if user is authenticated and merge roles from profiles
 const requireAuth = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -27,86 +43,211 @@ const requireAuth = async (req, res, next) => {
         });
     }
 
-    req.user = user;
+    // Fetch profile from your profiles table
+    const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('role, roles')
+        .eq('id', user.id)
+        .single();
+
+    req.user = {
+        ...user,
+        ...(profile || {})
+    };
+
+    // Add this debug log:
+    console.log('DEBUG req.user:', req.user);
+
     next();
 };
+
+function parseDateInputToUtc(value, endOfDay = false) {
+    if (!value) return null;
+
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const suffix = endOfDay ? 'T23:59:59.999Z' : 'T00:00:00.000Z';
+        const parsed = new Date(`${value}${suffix}`);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isFutureDate(dateValue) {
+    return dateValue instanceof Date && !Number.isNaN(dateValue.getTime()) && dateValue.getTime() > Date.now();
+}
+
+function toValidFutureIso(value) {
+    const parsed = parseDateInputToUtc(value);
+    if (!isFutureDate(parsed)) return null;
+    return parsed.toISOString();
+}
+
+function computeLegacyNextOccurrence(day, month) {
+    if (!Number.isInteger(day) || !Number.isInteger(month) || day < 1 || day > 31 || month < 1 || month > 12) {
+        return null;
+    }
+
+    const now = new Date();
+    let year = now.getUTCFullYear();
+    let candidate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+
+    if (candidate.getTime() <= now.getTime()) {
+        year += 1;
+        candidate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    }
+
+    return Number.isNaN(candidate.getTime()) ? null : candidate;
+}
+
+function computeExpiryFromTutorSettings(tutorSettings) {
+    const mode = tutorSettings?.default_expiry_mode === 'fixed_date' ? 'fixed_date' : 'duration';
+
+    if (mode === 'fixed_date') {
+        const fixedIso = toValidFutureIso(tutorSettings?.exact_expiry_at);
+        if (!fixedIso) {
+            throw new Error('Invalid exact expiry for fixed_date mode');
+        }
+
+        return new Date(fixedIso);
+    }
+
+    const durationDays = Number(tutorSettings?.default_duration_days);
+    if (Number.isInteger(durationDays) && durationDays >= 1 && durationDays <= MAX_DURATION_DAYS) {
+        const expiry = new Date();
+        expiry.setUTCDate(expiry.getUTCDate() + durationDays);
+        return expiry;
+    }
+
+    const legacyExpiry = computeLegacyNextOccurrence(
+        Number(tutorSettings?.default_expiry_day),
+        Number(tutorSettings?.default_expiry_month)
+    );
+    if (legacyExpiry) {
+        return legacyExpiry;
+    }
+
+    const fallback = new Date();
+    fallback.setUTCDate(fallback.getUTCDate() + DEFAULT_DURATION_DAYS);
+    return fallback;
+}
+
+function isMissingColumnError(error) {
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('column') && message.includes('does not exist');
+}
+
+function withDefaultSettings(settings) {
+    const mode = settings?.default_expiry_mode === 'fixed_date' ? 'fixed_date' : 'duration';
+    const durationDays = Number(settings?.default_duration_days);
+
+    return {
+        default_expiry_mode: mode,
+        default_duration_days: Number.isInteger(durationDays) && durationDays >= 1 ? durationDays : DEFAULT_DURATION_DAYS,
+        exact_expiry_at: settings?.exact_expiry_at || null,
+        default_expiry_day: settings?.default_expiry_day ?? 31,
+        default_expiry_month: settings?.default_expiry_month ?? 12,
+        ...(settings || {})
+    };
+}
+
+function computeAccessExpiry(settings, approvedAt = new Date()) {
+        const mode = settings?.default_expiry_mode === 'fixed_date' ? 'fixed_date' : 'duration';
+
+        if (mode === 'fixed_date') {
+                const exactIso = toValidFutureIso(settings?.exact_expiry_at);
+                if (!exactIso) {
+                        throw new Error('Invalid exact expiry for fixed_date mode');
+                }
+
+                return exactIso;
+        }
+
+        const days = Number(settings?.default_duration_days);
+        const safeDays = Number.isFinite(days) && days > 0 ? days : DEFAULT_DURATION_DAYS;
+        const dt = new Date(approvedAt);
+        dt.setUTCDate(dt.getUTCDate() + safeDays);
+        return dt.toISOString();
+}
 
 // =============================================
 // GET /api/student-access/pending
 // Get all pending student approvals for a tutor
 // =============================================
-router.get('/pending', requireAuth, async (req, res) => {
+router.get('/pending', requireAuth, requireTutorOrAdmin, async (req, res) => {
     try {
         const tutorId = req.user.id;
 
-        const { data: tutorProfile, error: tutorProfileError } = await supabaseAdmin
+        // Fetch the user's profile to get their tutorial_group (for tutors) or all groups (for admins)
+        const userId = req.user.id;
+        const { data: userProfile, error: userProfileError } = await supabaseAdmin
             .from('profiles')
-            .select('id, role, tutorial_group')
-            .eq('id', tutorId)
+            .select('id, role, roles, tutorial_group')
+            .eq('id', userId)
             .single();
 
-        if (tutorProfileError || !tutorProfile || tutorProfile.role !== 'tutor') {
+        if (userProfileError || !userProfile) {
             return res.status(403).json({
                 error: 'Forbidden',
-                message: 'Only tutors can view pending approvals'
+                message: 'Profile not found'
             });
         }
 
-        if (!tutorProfile.tutorial_group) {
-            return res.json({
-                success: true,
-                data: []
+        // Check both role and roles fields for admin/tutor
+        const roles = [
+            ...(Array.isArray(userProfile.roles) ? userProfile.roles : []),
+            ...(userProfile.role ? [userProfile.role] : [])
+        ];
+
+        let pendingApprovals = [];
+        if (roles.includes('admin')) {
+            // Admin: get all pending approvals
+            const { data, error } = await supabaseAdmin
+                .from('student_approvals')
+                .select('id, student_id, payment_screenshot_url, status, created_at, tutorial_group_name, tutor_id')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: true });
+            if (error) {
+                return res.status(500).json({
+                    error: 'Failed to fetch pending approvals',
+                    message: error.message
+                });
+            }
+            pendingApprovals = data;
+        } else if (roles.includes('tutor')) {
+            if (!userProfile.tutorial_group) {
+                return res.json({
+                    success: true,
+                    data: []
+                });
+            }
+            const { data, error } = await supabaseAdmin
+                .from('student_approvals')
+                .select('id, student_id, payment_screenshot_url, status, created_at, tutorial_group_name, tutor_id')
+                .eq('status', 'pending')
+                .eq('tutorial_group_name', userProfile.tutorial_group)
+                .order('created_at', { ascending: true });
+            if (error) {
+                return res.status(500).json({
+                    error: 'Failed to fetch pending approvals',
+                    message: error.message
+                });
+            }
+            pendingApprovals = data;
+        } else {
+            return res.status(403).json({
+                error: 'Forbidden',
+                message: 'Only tutors or admins can view pending approvals'
             });
         }
-
-        // Get all pending approvals for this tutor's tutorial group
-        const { data: pendingApprovals, error } = await supabaseAdmin
-            .from('student_approvals')
-            .select('id, student_id, payment_screenshot_url, status, created_at, tutorial_group_name, tutor_id')
-            .eq('status', 'pending')
-            .eq('tutorial_group_name', tutorProfile.tutorial_group)
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(500).json({
-                error: 'Failed to fetch pending approvals',
-                message: error.message
-            });
-        }
-
-        if (!pendingApprovals || pendingApprovals.length === 0) {
-            return res.json({
-                success: true,
-                data: []
-            });
-        }
-
-        const studentIds = pendingApprovals.map(item => item.student_id);
-        const { data: studentProfiles, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, name, email')
-            .in('id', studentIds);
-
-        if (profileError) {
-            return res.status(500).json({
-                error: 'Failed to fetch student profiles',
-                message: profileError.message
-            });
-        }
-
-        const profileMap = new Map((studentProfiles || []).map(profile => [profile.id, profile]));
-        const hydratedApprovals = pendingApprovals.map(item => ({
-            ...item,
-            profiles: profileMap.get(item.student_id) || null
-        }));
 
         res.json({
             success: true,
-            data: hydratedApprovals
+            data: pendingApprovals
         });
-
     } catch (error) {
-        console.error('Get pending approvals error:', error);
+        console.error('Get pending students error:', error);
         res.status(500).json({
             error: 'Internal server error',
             message: error.message
@@ -185,7 +326,7 @@ router.post('/approve/:approvalId', requireAuth, async (req, res) => {
     try {
         const { approvalId } = req.params;
         const tutorId = req.user.id;
-        let { expiryDate } = req.body; // Format: "YYYY-MM-DD"
+        let { expiryDate, exactExpiryAt } = req.body; // explicit override formats: YYYY-MM-DD or ISO datetime
 
         // Get tutor profile
         const { data: tutorProfile, error: tutorProfileError } = await supabaseAdmin
@@ -249,35 +390,26 @@ router.post('/approve/:approvalId', requireAuth, async (req, res) => {
             .eq('id', tutorId)
             .single();
 
-        // If no explicit expiry date provided, use tutor's default
-        if (!expiryDate) {
-            // Get tutor's default expiry date setting
+        const explicitExpiry = parseDateInputToUtc(exactExpiryAt || expiryDate, Boolean(expiryDate && !exactExpiryAt));
+        let accessExpiresAt;
+
+        if (explicitExpiry) {
+            if (!isFutureDate(explicitExpiry)) {
+                return res.status(400).json({
+                    error: 'Invalid expiry date',
+                    message: 'Expiry must be in the future (UTC)'
+                });
+            }
+
+            accessExpiresAt = explicitExpiry.toISOString();
+        } else {
             const { data: tutorSettings } = await supabaseAdmin
                 .from('tutor_settings')
-                .select('default_expiry_day, default_expiry_month')
+                .select('*')
                 .eq('tutor_id', tutorId)
                 .single();
 
-            if (tutorSettings) {
-                // Build expiry date from day/month (next occurrence or this year)
-                const today = new Date();
-                const day = tutorSettings.default_expiry_day;
-                const month = tutorSettings.default_expiry_month - 1; // JS months are 0-indexed
-                let year = today.getFullYear();
-
-                // If date has already passed this year, use next year
-                const expiryThis = new Date(year, month, day);
-                if (expiryThis < today) {
-                    year = today.getFullYear() + 1;
-                }
-
-                expiryDate = new Date(year, month, day).toISOString().split('T')[0];
-            } else {
-                // Default: 1 year from now
-                const expiryDateObj = new Date();
-                expiryDateObj.setFullYear(expiryDateObj.getFullYear() + 1);
-                expiryDate = expiryDateObj.toISOString().split('T')[0];
-            }
+            accessExpiresAt = computeAccessExpiry(tutorSettings || {}, new Date());
         }
 
         // Update approval record
@@ -286,7 +418,7 @@ router.post('/approve/:approvalId', requireAuth, async (req, res) => {
             .update({
                 tutor_id: tutorId,
                 status: 'approved',
-                access_expires_at: expiryDate,
+                access_expires_at: accessExpiresAt,
                 approved_at: new Date().toISOString()
             })
             .eq('id', approvalId)
@@ -515,10 +647,7 @@ router.get('/settings', requireAuth, async (req, res) => {
 
         res.json({
             success: true,
-            data: settings || {
-                default_expiry_day: 31,
-                default_expiry_month: 12
-            }
+            data: withDefaultSettings(settings)
         });
 
     } catch (error) {
@@ -535,9 +664,49 @@ router.get('/settings', requireAuth, async (req, res) => {
 // Update tutor's default access settings
 // =============================================
 router.post('/settings', requireAuth, async (req, res) => {
+    console.log('POST /api/student-access/settings called');
     try {
         const tutorId = req.user.id;
-        const { defaultExpiryDay, defaultExpiryMonth } = req.body;
+    const applyToExisting = req.body?.applyToExisting === true || req.body?.apply_to_existing === true;
+        const expiryMode = req.body?.defaultExpiryMode ?? req.body?.default_expiry_mode ?? 'duration';
+        const durationDaysRaw = req.body?.defaultDurationDays ?? req.body?.default_duration_days;
+        const exactExpiryRaw = req.body?.exactExpiryAt ?? req.body?.exact_expiry_at ?? null;
+        const defaultExpiryDayRaw = req.body?.defaultExpiryDay ?? req.body?.default_expiry_day;
+        const defaultExpiryMonthRaw = req.body?.defaultExpiryMonth ?? req.body?.default_expiry_month;
+        const defaultExpiryDay = Number(defaultExpiryDayRaw ?? 31);
+        const defaultExpiryMonth = Number(defaultExpiryMonthRaw ?? 12);
+        const durationDays = Number(durationDaysRaw ?? DEFAULT_DURATION_DAYS);
+        const exactExpiryAt = exactExpiryRaw ? parseDateInputToUtc(exactExpiryRaw) : null;
+
+        if (!['duration', 'fixed_date'].includes(expiryMode)) {
+            return res.status(400).json({
+                error: 'Invalid expiry mode',
+                message: 'Mode must be duration or fixed_date'
+            });
+        }
+
+        if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > MAX_DURATION_DAYS) {
+            return res.status(400).json({
+                error: 'Invalid duration',
+                message: `Duration must be between 1 and ${MAX_DURATION_DAYS} days`
+            });
+        }
+
+        if (expiryMode === 'fixed_date') {
+            if (!exactExpiryAt || !isFutureDate(exactExpiryAt)) {
+                return res.status(400).json({
+                    error: 'Invalid fixed expiry',
+                    message: 'Exact expiry must be a valid future UTC date/time'
+                });
+            }
+        }
+
+        if (!Number.isInteger(defaultExpiryDay) || !Number.isInteger(defaultExpiryMonth)) {
+            return res.status(400).json({
+                error: 'Invalid settings payload',
+                message: 'default expiry day and month must be integers'
+            });
+        }
 
         // Validate input
         if (defaultExpiryDay < 1 || defaultExpiryDay > 31) {
@@ -561,29 +730,56 @@ router.post('/settings', requireAuth, async (req, res) => {
             .eq('tutor_id', tutorId)
             .single();
 
+        const fullPayload = {
+            default_expiry_mode: expiryMode,
+            default_duration_days: durationDays,
+            exact_expiry_at: expiryMode === 'fixed_date' ? exactExpiryAt.toISOString() : null,
+            default_expiry_day: defaultExpiryDay,
+            default_expiry_month: defaultExpiryMonth
+        };
+
+        const legacyPayload = {
+            default_expiry_day: defaultExpiryDay,
+            default_expiry_month: defaultExpiryMonth
+        };
+
         let result;
         if (existingSettings) {
-            // Update
             result = await supabaseAdmin
                 .from('tutor_settings')
-                .update({
-                    default_expiry_day: defaultExpiryDay,
-                    default_expiry_month: defaultExpiryMonth
-                })
+                .update(fullPayload)
                 .eq('tutor_id', tutorId)
                 .select()
                 .single();
+
+            if (result.error && isMissingColumnError(result.error)) {
+                result = await supabaseAdmin
+                    .from('tutor_settings')
+                    .update(legacyPayload)
+                    .eq('tutor_id', tutorId)
+                    .select()
+                    .single();
+            }
         } else {
-            // Insert
             result = await supabaseAdmin
                 .from('tutor_settings')
                 .insert({
                     tutor_id: tutorId,
-                    default_expiry_day: defaultExpiryDay,
-                    default_expiry_month: defaultExpiryMonth
+                    ...fullPayload
                 })
                 .select()
                 .single();
+
+            if (result.error && isMissingColumnError(result.error)) {
+                result = await supabaseAdmin
+                    .from('tutor_settings')
+                    .insert({
+                        tutor_id: tutorId,
+                        ...legacyPayload
+                    })
+                    .select()
+                    .single();
+            }
         }
 
         const { data: settings, error } = result;
@@ -595,14 +791,42 @@ router.post('/settings', requireAuth, async (req, res) => {
             });
         }
 
+        if (applyToExisting) {
+            const accessExpiresAt = computeAccessExpiry(settings || fullPayload, new Date());
+
+            const { data: updatedApprovals, error: bulkError } = await supabaseAdmin
+                .from('student_approvals')
+                .update({
+                    access_expires_at: accessExpiresAt
+                })
+                .eq('tutor_id', tutorId)
+                .eq('status', 'approved')
+                .select('id');
+
+            if (bulkError) {
+                return res.status(500).json({
+                    error: 'Settings saved, but failed to apply to existing approvals',
+                    message: bulkError.message
+                });
+            }
+
+            return res.json({
+                success: true,
+                message: 'Settings updated and applied to existing approved students',
+                updatedApprovalsCount: Array.isArray(updatedApprovals) ? updatedApprovals.length : 0,
+                data: withDefaultSettings(settings)
+            });
+        }
+
         res.json({
             success: true,
             message: 'Settings updated successfully',
-            data: settings
+            data: withDefaultSettings(settings)
         });
 
     } catch (error) {
         console.error('Save settings error:', error);
+    console.error('Settings error:', error); // <-- force log
         res.status(500).json({
             error: 'Internal server error',
             message: error.message
@@ -660,8 +884,8 @@ router.get('/status', requireAuth, async (req, res) => {
 
         // Check if approved but expired
         if (approval.status === 'approved') {
-            const now = new Date().toISOString();
-            if (approval.access_expires_at && approval.access_expires_at < now) {
+            const expiresAt = parseDateInputToUtc(approval.access_expires_at);
+            if (expiresAt && expiresAt.getTime() <= Date.now()) {
                 return res.json({
                     success: true,
                     status: 'rejected',
@@ -713,8 +937,11 @@ router.get('/check-access', requireAuth, async (req, res) => {
             });
         }
 
-        const now = new Date().toISOString();
-        const validApprovals = approvals.filter(a => !a.access_expires_at || a.access_expires_at > now);
+        const validApprovals = approvals.filter((a) => {
+            if (!a.access_expires_at) return true;
+            const expiresAt = parseDateInputToUtc(a.access_expires_at);
+            return expiresAt && expiresAt.getTime() > Date.now();
+        });
 
         res.json({
             success: true,

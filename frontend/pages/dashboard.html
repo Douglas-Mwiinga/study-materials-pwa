@@ -1,8 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+        <link rel="icon" type="image/png" href="/icons/icon-192.png">
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
     <meta charset="UTF-8">
+    <link rel="manifest" href="/manifest.json">
         <style>
+            .hidden-settings-row {
+                display: none;
+            }
+
+            .admin-debug-line {
+                margin: 0 0 12px;
+                color: #fff;
+            }
+
+            .top5-list {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .top5-item {
+                background: #fafafa;
+                border: 1px solid #f0f0f0;
+                border-radius: 10px;
+                padding: 10px 12px;
+            }
+
+            .top5-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 6px;
+            }
+
+            .custom-expiry-row {
+                display: none;
+            }
+
+            .top5-title {
+                font-weight: 600;
+                color: #333;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .top5-meta {
+                font-size: 0.85em;
+                color: #666;
+                white-space: nowrap;
+            }
+
+            .top5-track {
+                width: 100%;
+                height: 10px;
+                border-radius: 999px;
+                background: #ececec;
+                overflow: hidden;
+            }
+
+            .top5-fill {
+                height: 100%;
+                background: #d32f2f;
+                border-radius: 999px;
+            }
+
+            #topMaterialsList,
+            #pendingStudentsList,
+            #approvedStudentsList,
+            #adminPendingTutorsList,
+            #adminApprovedTutorsList,
+            #adminRejectedTutorsList {
+                max-height: 320px;
+                overflow-y: auto;
+                padding-right: 6px;
+            }
+
             /* Responsive styles */
             @media (max-width: 900px) {
                 .dashboard-container {
@@ -36,9 +112,18 @@
                 .dashboard-chart-card, .dashboard-access-management, .dashboard-settings, .dashboard-bottom-section {
                     padding: 4px;
                 }
+                .dashboard-nav .container {
+                    overflow-x: auto;
+                }
                 .dashboard-nav .nav-items {
-                    flex-direction: column;
+                    flex-direction: row;
+                    flex-wrap: nowrap;
                     gap: 8px;
+                    overflow-x: auto;
+                }
+                .dashboard-nav .nav-item {
+                    white-space: nowrap;
+                    flex: 0 0 auto;
                 }
             }
         </style>
@@ -312,20 +397,11 @@
                     });
                 </script>
 
-                <!-- Downloads Per Material Chart -->
+                <!-- Top 5 Materials by Downloads -->
                 <div class="dashboard-chart-card">
-                    <h3 class="chart-title">Downloads Per Material</h3>
-                    <div class="chart-container">
-                        <div class="chart-y-axis" id="chartYAxis">
-                            <span>0</span>
-                            <span>0</span>
-                            <span>0</span>
-                            <span>0</span>
-                            <span>0</span>
-                        </div>
-                        <div class="chart-bars" id="chartBars">
-                            <p>Loading chart data...</p>
-                        </div>
+                    <h3 class="chart-title">Top 5 Materials by Downloads</h3>
+                    <div id="topMaterialsList" class="top5-list">
+                        <p>Loading top materials...</p>
                     </div>
                 </div>
 
@@ -350,31 +426,28 @@
                     </div>
                 </div>
 
-                <!-- Tutor Settings Section -->
+                <!-- Tutor Settings Section (Preset-based) -->
                 <div class="dashboard-settings">
                     <h3 class="settings-section-title">Tutor Settings</h3>
                     <div class="settings-grid">
                         <div>
-                            <label for="expiryDay" class="settings-label">Default Expiry Day</label>
-                            <input type="number" id="expiryDay" min="1" max="31" placeholder="Day (1-31)" class="settings-control">
+                            <label for="expiryPreset" class="settings-label">Student Access Duration</label>
+                            <select id="expiryPreset" class="settings-control">
+                                <option value="30">Short (30 days)</option>
+                                <option value="90" selected>Standard (90 days)</option>
+                                <option value="180">Long (180 days)</option>
+                                <option value="custom">Custom Date…</option>
+                            </select>
+                        </div>
+                        <div id="customExpiryRow" class="custom-expiry-row">
+                            <label for="customExpiryDate" class="settings-label">Custom Expiry Date</label>
+                            <input type="datetime-local" id="customExpiryDate" class="settings-control">
                         </div>
                         <div>
-                            <label for="expiryMonth" class="settings-label">Default Expiry Month</label>
-                            <select id="expiryMonth" class="settings-control">
-                                <option value="">Select Month</option>
-                                <option value="1">January</option>
-                                <option value="2">February</option>
-                                <option value="3">March</option>
-                                <option value="4">April</option>
-                                <option value="5">May</option>
-                                <option value="6">June</option>
-                                <option value="7">July</option>
-                                <option value="8">August</option>
-                                <option value="9">September</option>
-                                <option value="10">October</option>
-                                <option value="11">November</option>
-                                <option value="12">December</option>
-                            </select>
+                            <label class="settings-label" for="applyToExisting">
+                                <input type="checkbox" id="applyToExisting">
+                                Apply this expiry setting to already approved students
+                            </label>
                         </div>
                         <button id="saveSettingsBtn" type="button" class="btn btn-primary">Save Settings</button>
                     </div>
@@ -403,6 +476,7 @@
                 <!-- Admin Panel (only visible to admins) -->
                 <div id="adminSection" class="dashboard-admin-panel dashboard-admin-panel-hidden">
                     <h3 class="admin-section-title">🔐 Admin Panel - Tutor Approvals</h3>
+                    <p id="adminDebugLine" class="dashboard-muted admin-debug-line">Admin debug: waiting for data...</p>
                     
                     <!-- Admin Stats -->
                     <div class="admin-stats">
@@ -755,6 +829,10 @@
             return [...new Set([...arr, user.role].filter(Boolean))];
         }
 
+        function isBackendAdminUser(user = {}) {
+            return user?.role === 'admin';
+        }
+
         async function checkAdminAccess() {
             try {
                 const token = getAuthToken();
@@ -779,8 +857,8 @@
                 const adminSection = document.getElementById('adminSection');
                 if (!adminSection) return;
                 
-                // Show admin section if user is admin
-                if (roles.includes('admin')) {
+                // Match backend requireAdmin behavior (profiles.role === 'admin')
+                if (isBackendAdminUser(user)) {
                     adminSection.classList.remove('dashboard-admin-panel-hidden');
                     adminSection.style.display = 'block';
                     await loadAdminData();
@@ -796,6 +874,7 @@
         async function loadAdminData() {
             const token = localStorage.getItem('authToken');
             const API_URL = window.API_URL || 'http://localhost:3001';
+            const debugLine = document.getElementById('adminDebugLine');
             
             try {
                 // Load stats and tutors in parallel
@@ -814,6 +893,23 @@
                     })
                 ]);
 
+                if (
+                    statsResponse.status === 403 ||
+                    pendingResponse.status === 403 ||
+                    approvedResponse.status === 403 ||
+                    rejectedResponse.status === 403
+                ) {
+                    const adminSection = document.getElementById('adminSection');
+                    if (adminSection) {
+                        adminSection.classList.add('dashboard-admin-panel-hidden');
+                        adminSection.style.display = 'none';
+                    }
+                    if (debugLine) {
+                        debugLine.textContent = 'Admin debug: admin access not available for this account.';
+                    }
+                    return;
+                }
+
                 // Process stats
                 if (statsResponse.ok) {
                     const statsData = await statsResponse.json();
@@ -826,25 +922,59 @@
                 }
 
                 // Process pending tutors
+                let pendingTutors = [];
                 if (pendingResponse.ok) {
                     const pendingData = await pendingResponse.json();
-                    renderPendingTutors(pendingData.tutors || []);
+                    pendingTutors = pendingData.tutors || [];
+                    renderPendingTutors(pendingTutors);
                 }
 
                 // Process approved tutors
+                let approvedTutors = [];
                 if (approvedResponse.ok) {
                     const approvedData = await approvedResponse.json();
-                    renderApprovedTutors(approvedData.tutors || []);
+                    approvedTutors = approvedData.tutors || [];
+                    renderApprovedTutors(approvedTutors);
                 }
 
                 // Process rejected tutors
+                let rejectedTutors = [];
                 if (rejectedResponse.ok) {
                     const rejectedData = await rejectedResponse.json();
-                    renderRejectedTutors(rejectedData.tutors || []);
+                    rejectedTutors = rejectedData.tutors || [];
+                    renderRejectedTutors(rejectedTutors);
+                }
+
+                const firstTutor = pendingTutors[0] || approvedTutors[0] || rejectedTutors[0] || null;
+                if (debugLine) {
+                    if (!firstTutor) {
+                        debugLine.textContent = `Admin debug: no tutors returned. API=${DASHBOARD_API_URL}`;
+                    } else {
+                        debugLine.textContent = `Admin debug: first tutor day=${firstTutor.default_expiry_day ?? 'missing'}, month=${firstTutor.default_expiry_month ?? 'missing'}, API=${DASHBOARD_API_URL}`;
+                    }
                 }
             } catch (error) {
                 console.error('Error loading admin data:', error);
+                if (debugLine) {
+                    debugLine.textContent = `Admin debug: load error (${error.message || 'unknown'})`;
+                }
             }
+        }
+
+        function formatExpirySettings(tutor) {
+            const mode = tutor?.default_expiry_mode === 'fixed_date' ? 'fixed_date' : 'duration';
+            if (mode === 'fixed_date' && tutor?.exact_expiry_at) {
+                return `Default Access: Fixed until ${new Date(tutor.exact_expiry_at).toLocaleString()} (UTC source)`;
+            }
+
+            const durationDays = Number(tutor?.default_duration_days);
+            if (Number.isInteger(durationDays) && durationDays > 0) {
+                return `Default Access: ${durationDays} day(s) from approval`;
+            }
+
+            const day = Number(tutor?.default_expiry_day) || 31;
+            const month = Number(tutor?.default_expiry_month) || 12;
+            return `Default Access (legacy): Day ${day}, Month ${month}`;
         }
 
         function renderPendingTutors(tutors) {
@@ -860,6 +990,7 @@
                         <div class="admin-tutor-name">${tutor.name || 'Unknown'}</div>
                         <div class="admin-tutor-email">${tutor.email}</div>
                         <div class="admin-tutor-group">Tutorial Group: ${tutor.tutorial_group || 'N/A'}</div>
+                        <div class="admin-tutor-notes">${formatExpirySettings(tutor)}</div>
                         ${tutor.tutor_status_notes ? `<div class="admin-tutor-notes">Notes: ${tutor.tutor_status_notes}</div>` : ''}
                     </div>
                     <div class="admin-tutor-actions">
@@ -883,6 +1014,7 @@
                         <div class="admin-tutor-name">${tutor.name || 'Unknown'}</div>
                         <div class="admin-tutor-email">${tutor.email}</div>
                         <div class="admin-tutor-group">Tutorial Group: ${tutor.tutorial_group || 'N/A'}</div>
+                        <div class="admin-tutor-notes">${formatExpirySettings(tutor)}</div>
                         ${tutor.tutor_status_notes ? `<div class="admin-tutor-notes">Notes: ${tutor.tutor_status_notes}</div>` : ''}
                     </div>
                 </div>
@@ -902,6 +1034,7 @@
                         <div class="admin-tutor-name">${tutor.name || 'Unknown'}</div>
                         <div class="admin-tutor-email">${tutor.email}</div>
                         <div class="admin-tutor-group">Tutorial Group: ${tutor.tutorial_group || 'N/A'}</div>
+                        <div class="admin-tutor-notes">${formatExpirySettings(tutor)}</div>
                         ${tutor.tutor_status_notes ? `<div class="admin-tutor-notes">Reason: ${tutor.tutor_status_notes}</div>` : ''}
                     </div>
                 </div>
@@ -968,47 +1101,42 @@
             }
         }
 
-        // Update chart with materials data
+        // Update top materials list with horizontal progress bars
         function updateChart(materials) {
-            const chartBars = document.querySelector('.chart-bars');
-            if (!chartBars) return;
+            const topList = document.getElementById('topMaterialsList');
+            if (!topList) return;
 
-            // Sort by downloads and take top 6
+            // Sort by downloads and take top 5
             const topMaterials = [...materials]
                 .sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0))
-                .slice(0, 6);
+                .slice(0, 5);
 
             if (topMaterials.length === 0) {
-                chartBars.innerHTML = '<p>No materials yet</p>';
+                topList.innerHTML = '<p>No materials yet</p>';
                 return;
             }
 
             const maxDownloads = Math.max(...topMaterials.map(m => m.downloads_count || 0), 1);
 
-            chartBars.innerHTML = topMaterials.map(material => {
-                const height = ((material.downloads_count || 0) / maxDownloads) * 100;
-                    return `
-                    <div class="chart-bar-wrapper">
-                        <div class="chart-bar" style="height: ${height}%;">
-                            <span class="bar-value">${material.downloads_count || 0}</span>
+            topList.innerHTML = topMaterials.map((material, index) => {
+                const downloads = material.downloads_count || 0;
+                const percentage = Math.round((downloads / maxDownloads) * 100);
+                const title = material.title || material.course || 'Untitled material';
+                const course = material.course || 'N/A';
+
+                return `
+                    <div class="top5-item">
+                        <div class="top5-header">
+                            <span class="top5-title">#${index + 1} ${title}</span>
+                            <span class="top5-meta">${downloads} downloads · ${percentage}%</span>
                         </div>
-                        <span class="bar-label">${material.course}</span>
+                        <div class="top5-meta">Course: ${course}</div>
+                        <div class="top5-track">
+                            <div class="top5-fill" style="width: ${percentage}%;"></div>
+                        </div>
                     </div>
                 `;
             }).join('');
-
-            // Update Y-axis based on max downloads
-            const yAxis = document.querySelector('.chart-y-axis');
-            if (yAxis && maxDownloads > 0) {
-                const max = Math.ceil(maxDownloads / 50) * 50; // Round up to nearest 50
-                yAxis.innerHTML = `
-                    <span>${max}</span>
-                    <span>${Math.round(max * 0.75)}</span>
-                    <span>${Math.round(max * 0.5)}</span>
-                    <span>${Math.round(max * 0.25)}</span>
-                    <span>0</span>
-                `;
-            }
         }
 
         // Update courses list
@@ -1332,7 +1460,14 @@
             }
         }
 
-        // Load and save tutor settings
+
+        // Tutor Settings: Preset-based UI logic
+        function showOrHideCustomExpiry() {
+            const preset = document.getElementById('expiryPreset').value;
+            const customRow = document.getElementById('customExpiryRow');
+            customRow.style.display = preset === 'custom' ? 'block' : 'none';
+        }
+
         async function loadTutorSettings() {
             const token = localStorage.getItem('authToken');
             if (!token) return;
@@ -1349,8 +1484,23 @@
                     const result = await response.json();
                     const settings = result.data;
                     if (settings) {
-                        document.getElementById('expiryDay').value = settings.default_expiry_day || 31;
-                        document.getElementById('expiryMonth').value = settings.default_expiry_month || 12;
+                        // Set preset dropdown
+                        let presetValue = '90';
+                        if (settings.default_expiry_mode === 'fixed_date' && settings.exact_expiry_at) {
+                            presetValue = 'custom';
+                            const exactDate = new Date(settings.exact_expiry_at);
+                            if (!Number.isNaN(exactDate.getTime())) {
+                                const localValue = new Date(exactDate.getTime() - (exactDate.getTimezoneOffset() * 60000))
+                                    .toISOString()
+                                    .slice(0, 16);
+                                document.getElementById('customExpiryDate').value = localValue;
+                            }
+                        } else if (settings.default_duration_days) {
+                            presetValue = String(settings.default_duration_days);
+                        }
+                        document.getElementById('expiryPreset').value = presetValue;
+                        showOrHideCustomExpiry();
+                        document.getElementById('applyToExisting').checked = false;
                     }
                 } else if (response.status === 403) {
                     const msg = document.getElementById('settingsMessage');
@@ -1365,17 +1515,43 @@
             }
         }
 
-        // Save tutor settings
+        document.getElementById('expiryPreset')?.addEventListener('change', showOrHideCustomExpiry);
+
         document.getElementById('saveSettingsBtn')?.addEventListener('click', async () => {
             const token = localStorage.getItem('authToken');
             if (!token) return;
 
-            const day = parseInt(document.getElementById('expiryDay').value);
-            const month = parseInt(document.getElementById('expiryMonth').value);
+            const preset = document.getElementById('expiryPreset').value;
+            const customDate = document.getElementById('customExpiryDate').value;
+            const applyToExisting = document.getElementById('applyToExisting').checked;
+            let payload = {};
 
-            if (isNaN(day) || day < 1 || day > 31 || isNaN(month) || month < 1 || month > 12) {
-                showDashboardToast('Please enter valid day (1-31) and month (1-12)', 'error');
-                return;
+            if (preset === 'custom') {
+                if (!customDate) {
+                    showDashboardToast('Please select a custom expiry date', 'error');
+                    return;
+                }
+                const parsedCustom = new Date(customDate);
+                if (Number.isNaN(parsedCustom.getTime()) || parsedCustom.getTime() <= Date.now()) {
+                    showDashboardToast('Custom expiry must be a future date/time', 'error');
+                    return;
+                }
+                payload = {
+                    default_expiry_mode: 'fixed_date',
+                    exact_expiry_at: new Date(customDate).toISOString(),
+                    applyToExisting
+                };
+            } else {
+                const days = Number(preset);
+                if (isNaN(days) || days < 1 || days > 3650) {
+                    showDashboardToast('Please select a valid duration', 'error');
+                    return;
+                }
+                payload = {
+                    default_expiry_mode: 'duration',
+                    default_duration_days: days,
+                    applyToExisting
+                };
             }
 
             try {
@@ -1385,22 +1561,27 @@
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        default_expiry_day: day,
-                        default_expiry_month: month
-                    })
+                    body: JSON.stringify(payload)
                 });
+                const responseData = await response.json().catch(() => ({}));
 
                 const msg = document.getElementById('settingsMessage');
                 if (response.ok) {
                     msg.className = 'settings-message settings-message-success';
                     msg.style.display = 'block';
-                    msg.textContent = 'Settings saved successfully!';
+                    const updatedCount = Number(responseData?.updatedApprovalsCount || 0);
+                    msg.textContent = applyToExisting
+                        ? `Settings saved. Updated ${updatedCount} approved student access record(s).`
+                        : 'Settings saved successfully!';
+                    loadApprovedStudents();
+                    if (typeof loadAdminData === 'function') {
+                        loadAdminData();
+                    }
                     setTimeout(() => msg.style.display = 'none', 3000);
                 } else {
                     msg.className = 'settings-message settings-message-error';
                     msg.style.display = 'block';
-                    msg.textContent = 'Failed to save settings';
+                    msg.textContent = responseData?.message || 'Failed to save settings';
                     setTimeout(() => msg.style.display = 'none', 3000);
                 }
             } catch (error) {
@@ -1410,16 +1591,24 @@
         });
 
         document.addEventListener('DOMContentLoaded', async () => {
+            const expiryModeSelect = document.getElementById('expiryMode');
+            if (expiryModeSelect) {
+                expiryModeSelect.addEventListener('change', (event) => {
+                    toggleSettingsModeUI(event.target.value);
+                });
+                toggleSettingsModeUI(expiryModeSelect.value);
+            }
+
             initUserChip();
             loadDashboard();
             checkAdminAccess();
 
             const roles = await resolveCurrentUserRoles();
-            const hasTutorRole = roles.includes('tutor');
+            const hasTutorOrAdminRole = roles.includes('tutor') || roles.includes('admin');
 
-            setTutorSectionsVisible(hasTutorRole);
+            setTutorSectionsVisible(hasTutorOrAdminRole);
 
-            if (hasTutorRole) {
+            if (hasTutorOrAdminRole) {
                 loadPendingStudents();
                 loadApprovedStudents();
                 loadTutorSettings();

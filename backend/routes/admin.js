@@ -52,6 +52,40 @@ async function requireAdmin(req, res, next) {
     }
 }
 
+async function attachTutorSettings(tutors = []) {
+    if (!Array.isArray(tutors) || tutors.length === 0) {
+        return tutors;
+    }
+
+    const tutorIds = tutors.map((tutor) => tutor.id).filter(Boolean);
+    if (tutorIds.length === 0) {
+        return tutors;
+    }
+
+    const { data: settingsRows, error } = await supabaseAdmin
+        .from('tutor_settings')
+        .select('*')
+        .in('tutor_id', tutorIds);
+
+    if (error || !settingsRows) {
+        return tutors;
+    }
+
+    const settingsByTutorId = new Map(settingsRows.map((row) => [row.tutor_id, row]));
+
+    return tutors.map((tutor) => {
+        const settings = settingsByTutorId.get(tutor.id);
+        return {
+            ...tutor,
+            default_expiry_mode: settings?.default_expiry_mode || 'duration',
+            default_duration_days: settings?.default_duration_days ?? 90,
+            exact_expiry_at: settings?.exact_expiry_at ?? null,
+            default_expiry_day: settings?.default_expiry_day ?? 31,
+            default_expiry_month: settings?.default_expiry_month ?? 12
+        };
+    });
+}
+
 // =============================================
 // GET /api/admin/tutors/pending
 // Get all pending tutor registrations
@@ -67,10 +101,12 @@ router.get('/tutors/pending', requireAdmin, async (req, res) => {
 
         if (error) throw error;
 
+        const tutorsWithSettings = await attachTutorSettings(data || []);
+
         res.json({
             success: true,
-            tutors: data || [],
-            count: data?.length || 0
+            tutors: tutorsWithSettings,
+            count: tutorsWithSettings.length
         });
     } catch (error) {
         console.error('Get pending tutors error:', error);
@@ -96,10 +132,12 @@ router.get('/tutors/approved', requireAdmin, async (req, res) => {
 
         if (error) throw error;
 
+        const tutorsWithSettings = await attachTutorSettings(data || []);
+
         res.json({
             success: true,
-            tutors: data || [],
-            count: data?.length || 0
+            tutors: tutorsWithSettings,
+            count: tutorsWithSettings.length
         });
     } catch (error) {
         console.error('Get approved tutors error:', error);
@@ -125,10 +163,12 @@ router.get('/tutors/rejected', requireAdmin, async (req, res) => {
 
         if (error) throw error;
 
+        const tutorsWithSettings = await attachTutorSettings(data || []);
+
         res.json({
             success: true,
-            tutors: data || [],
-            count: data?.length || 0
+            tutors: tutorsWithSettings,
+            count: tutorsWithSettings.length
         });
     } catch (error) {
         console.error('Get rejected tutors error:', error);

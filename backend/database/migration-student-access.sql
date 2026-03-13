@@ -70,6 +70,24 @@ CREATE TABLE IF NOT EXISTS tutor_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+ALTER TABLE tutor_settings
+    ADD COLUMN IF NOT EXISTS default_expiry_mode TEXT NOT NULL DEFAULT 'duration',
+    ADD COLUMN IF NOT EXISTS default_duration_days INTEGER NOT NULL DEFAULT 90,
+    ADD COLUMN IF NOT EXISTS exact_expiry_at TIMESTAMP WITH TIME ZONE NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'tutor_settings_default_expiry_mode_check'
+    ) THEN
+        ALTER TABLE tutor_settings
+            ADD CONSTRAINT tutor_settings_default_expiry_mode_check
+            CHECK (default_expiry_mode IN ('duration', 'fixed_date'));
+    END IF;
+END $$;
+
 -- Enable Row Level Security
 ALTER TABLE tutor_settings ENABLE ROW LEVEL SECURITY;
 

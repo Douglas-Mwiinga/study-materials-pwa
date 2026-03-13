@@ -2,7 +2,8 @@ import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 
-const pagesDir = resolve(process.cwd(), 'frontend/pages');
+const frontendRoot = resolve(process.cwd(), 'frontend');
+const pagesDir = resolve(frontendRoot, 'pages');
 const pageNames = ['index', 'login', 'signup', 'materials', 'dashboard', 'feedback', 'status'];
 
 const input = Object.fromEntries(
@@ -12,7 +13,7 @@ const input = Object.fromEntries(
 );
 
 export default defineConfig({
-  root: pagesDir,
+  root: frontendRoot,
   build: {
     outDir: resolve(process.cwd(), 'dist'),
     emptyOutDir: true,
