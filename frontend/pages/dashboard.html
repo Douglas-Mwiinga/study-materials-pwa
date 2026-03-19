@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-        <link rel="icon" type="image/png" href="/icons/icon-192.png">
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+        <link rel="icon" type="image/png" href="/icons/icon-32.png">
+        <link rel="manifest" href="/manifest.json">
     <meta charset="UTF-8">
-    <link rel="manifest" href="/manifest.json">
+    
         <style>
             .hidden-settings-row {
                 display: none;
@@ -136,8 +136,8 @@
         <div class="container header-container materials-header">
             <div class="logo">Smart Up</div>
             <div class="user-chip" id="userChip">
-                <span class="user-email" id="userEmail">user@example.com</span>
-                <span class="user-role-pill">Tutor</span>
+                <span class="user-email" id="userEmail">Loading...</span>
+                <span class="user-role-pill" id="userRole">Loading...</span>
             </div>
             <button class="logout-btn" type="button">Log out</button>
         </div>
@@ -177,7 +177,7 @@
                     </div>
                 </div>
                 <script>
-                    // Load and display account status
+                    // Load and display user info and account status
                     (async function() {
                         function normalizeRoles(user) {
                             const rolesFromArray = Array.isArray(user?.roles) ? user.roles : [];
@@ -198,21 +198,29 @@
                             const response = await fetch(`${baseUrl}/api/auth/me`, {
                                 headers: { 'Authorization': `Bearer ${token}` }
                             });
-                            
                             if (!response.ok) return;
-                            
                             const result = await response.json();
                             const user = result.user;
-                            
+                            if (!user) {
+                                document.getElementById('userEmail').textContent = 'Unknown';
+                                document.getElementById('userRole').textContent = 'Unknown';
+                                // Optionally redirect to login or show a message
+                                return;
+                            }
+
+                            // Set user name and role in header
+                            document.getElementById('userEmail').textContent = user.name || user.email || 'Unknown';
+                            document.getElementById('userRole').textContent = (normalizeRoles(user)[0] || user.role || 'Unknown').toUpperCase();
+
                             // Only show status for tutors
                             if (!hasAnyRole(user, ['tutor', 'admin'])) {
                                 document.getElementById('statusCardContainer').style.display = 'none';
                                 return;
                             }
-                            
+
                             const statusBadge = document.getElementById('statusBadge');
                             let statusColor = '#667eea';
-                            
+
                             if (user.tutor_status === 'approved') {
                                 statusBadge.textContent = 'APPROVED';
                                 statusColor = '#4caf50';
@@ -223,7 +231,7 @@
                                 statusBadge.textContent = 'REJECTED';
                                 statusColor = '#f44336';
                             }
-                            
+
                             const card = document.getElementById('statusCardContainer');
                             card.style.background = `linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%)`;
                             card.style.color = '#fff';

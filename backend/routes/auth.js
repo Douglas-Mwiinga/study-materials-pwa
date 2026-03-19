@@ -279,7 +279,15 @@ router.post('/login', async (req, res) => {
         const roles = normalizeRoles(profile);
         const role = primaryRoleFromRoles(roles) || profile.role || null;
 
-        // Return success with user data and session
+        // Issue JWT token for API authentication
+        const jwt = require('jsonwebtoken');
+        const jwtToken = jwt.sign(
+            { userId: profile.id, role: role },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        // Return success with user data, session, and JWT token
         res.json({
             success: true,
             message: 'Login successful',
@@ -294,7 +302,8 @@ router.post('/login', async (req, res) => {
             session: {
                 access_token: authData.session.access_token,
                 refresh_token: authData.session.refresh_token
-            }
+            },
+            token: jwtToken
         });
 
     } catch (error) {
@@ -344,77 +353,24 @@ router.post('/logout', async (req, res) => {
 // =============================================
 // GET /api/auth/me (Get current user)
 // =============================================
+const { getUserIdFromToken } = require('../utils/authHelpers');
 router.get('/me', async (req, res) => {
-    try {
-        const authHeader = req.headers.authorization;
-        
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({
-                error: 'Unauthorized',
-                message: 'No token provided'
-            });
-        }
-
-        const token = authHeader.split(' ')[1];
-
-        // Verify token and get user
-        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-        if (error || !user) {
-            return res.status(401).json({
-                error: 'Invalid token',
-                message: 'Token is invalid or expired'
-            });
-        }
-
-        let profile = null;
-
-        const { data: profileWithRoles, error: profileWithRolesError } = await supabaseAdmin
-            .from('profiles_with_roles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-        if (!profileWithRolesError && profileWithRoles) {
-            profile = profileWithRoles;
-        } else {
-            const { data: fallbackProfile, error: fallbackProfileError } = await supabaseAdmin
-                .from('profiles')
-                .select('id, email, name, role, tutorial_group, created_at, tutor_status, tutor_status_notes, tutor_approved_at')
-                .eq('id', user.id)
-                .single();
-
-            if (fallbackProfileError || !fallbackProfile) {
-                return res.status(404).json({
-                    error: 'Profile not found',
-                    message: 'User profile does not exist'
-                });
-            }
-
-            profile = fallbackProfile;
-        }
-
-        const roles = normalizeRoles(profile);
-        const role = primaryRoleFromRoles(roles) || profile.role || null;
-
-        const responseUser = {
-            ...profile,
-            role,
-            roles
-        };
-
-        res.json({
-            success: true,
-            user: responseUser
-        });
-
-    } catch (error) {
-        console.error('Get user error:', error);
-        res.status(500).json({
-            error: 'Internal server error',
-            message: error.message
-        });
+    console.log('[GET /api/auth/me] Headers:', req.headers);
+    const authHeader = req.headers.authorization;
+    const userId = getUserIdFromToken(authHeader);
+    if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
     }
+    // Fetch full user profile
+    const { data: profile, error } = await supabaseAdmin
+        .from('profiles')
+        .select('id, email, name, role, roles, tutorial_group, tutor_status')
+        .eq('id', userId)
+        .single();
+    if (error || !profile) {
+        return res.status(404).json({ error: 'User profile not found' });
+    }
+    res.json({ user: profile });
 });
 
 module.exports = router;

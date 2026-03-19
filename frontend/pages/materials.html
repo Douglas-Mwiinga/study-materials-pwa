@@ -7,7 +7,7 @@
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <meta charset="UTF-8">
-    <link rel="manifest" href="/manifest.json">
+        <!-- <link rel="manifest" href="/manifest.json"> -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Materials - Smart Up</title>
     <link rel="stylesheet" href="../css/styles.css">
@@ -563,7 +563,11 @@
         // Handle material deletion
         async function handleDeleteMaterial(materialId) {
             try {
-                const token = localStorage.getItem('authToken');
+                // Try to get token from localStorage or fallback to getAuthToken()
+                let token = localStorage.getItem('authToken');
+                if (!token && typeof getAuthToken === 'function') {
+                    token = getAuthToken();
+                }
                 if (!token) {
                     alert('Authentication required. Please sign in again.');
                     return;

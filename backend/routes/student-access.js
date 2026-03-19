@@ -24,40 +24,33 @@ const DEFAULT_DURATION_DAYS = 90;
 const MAX_DURATION_DAYS = 3650;
 
 // Middleware to check if user is authenticated and merge roles from profiles
+const { getUserIdFromToken } = require('../utils/authHelpers');
 const requireAuth = async (req, res, next) => {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const userId = getUserIdFromToken(authHeader);
+    if (!userId) {
         return res.status(401).json({
             error: 'Unauthorized',
-            message: 'No token provided'
-        });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-    if (error || !user) {
-        return res.status(401).json({
-            error: 'Invalid token',
             message: 'Token is invalid or expired'
         });
     }
 
     // Fetch profile from your profiles table
-    const { data: profile } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabaseAdmin
         .from('profiles')
-        .select('role, roles')
-        .eq('id', user.id)
+        .select('id, email, name, role, roles, tutorial_group')
+        .eq('id', userId)
         .single();
 
-    req.user = {
-        ...user,
-        ...(profile || {})
-    };
+    if (profileError || !profile) {
+        return res.status(401).json({
+            error: 'Unauthorized',
+            message: 'User profile not found'
+        });
+    }
 
-    // Add this debug log:
+    req.user = profile;
     console.log('DEBUG req.user:', req.user);
-
     next();
 };
 

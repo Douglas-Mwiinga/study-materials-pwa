@@ -4,24 +4,7 @@ const router = express.Router();
 const { supabaseAdmin } = require('../config/supabase');
 require('dotenv').config();
 
-// Helper function to get user ID from token
-async function getUserIdFromToken(authHeader) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
-    }
-
-    const token = authHeader.split(' ')[1];
-    
-    try {
-        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-        if (error || !user) {
-            return null;
-        }
-        return user.id;
-    } catch (error) {
-        return null;
-    }
-}
+const { getUserIdFromToken } = require('../utils/authHelpers');
 
 // Helper function to get user profile
 async function getUserProfile(userId) {

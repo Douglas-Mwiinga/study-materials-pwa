@@ -86,7 +86,14 @@ async function login(email, password) {
         }
 
         // Store authentication data
-        if (data.session?.access_token) {
+        if (data.token) {
+            // Store JWT token for API authentication
+            localStorage.setItem('authToken', data.token);
+            console.log('✓ JWT token stored successfully', {
+                hasAuthToken: !!localStorage.getItem('authToken')
+            });
+        } else if (data.session?.access_token) {
+            // Fallback: store Supabase session token if present
             localStorage.setItem('authToken', data.session.access_token);
             localStorage.setItem('refreshToken', data.session.refresh_token);
             console.log('✓ Tokens stored successfully', {
@@ -94,7 +101,7 @@ async function login(email, password) {
                 hasRefreshToken: !!localStorage.getItem('refreshToken')
             });
         } else {
-            console.warn('⚠ Server did not return session tokens', data);
+            console.warn('⚠ Server did not return authentication tokens', data);
         }
         if (data.user) {
             const roles = normalizeRoles(data.user);

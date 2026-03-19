@@ -6,22 +6,12 @@ const router = express.Router();
 require('dotenv').config();
 const { supabaseAdmin } = require('../config/supabase');
 
-// Helper function to extract user ID from token
-async function getUserIdFromToken(authHeader) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
-    }
-    
-    const token = authHeader.split(' ')[1];
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    
-    return (error || !user) ? null : user.id;
-}
+const { getUserIdFromToken } = require('../utils/authHelpers');
 
 // Middleware to check if user is admin
 async function requireAdmin(req, res, next) {
     try {
-        const userId = await getUserIdFromToken(req.headers.authorization);
+        const userId = getUserIdFromToken(req.headers.authorization);
         if (!userId) {
             return res.status(401).json({
                 error: 'Unauthorized',
@@ -31,11 +21,14 @@ async function requireAdmin(req, res, next) {
 
         const { data: user, error } = await supabaseAdmin
             .from('profiles')
-            .select('role')
+            .select('role, roles')
             .eq('id', userId)
             .single();
 
-        if (error || !user || user.role !== 'admin') {
+        const roles = Array.isArray(user?.roles) ? user.roles : [];
+        const legacyRole = user?.role ? [user.role] : [];
+        const allRoles = [...new Set([...roles, ...legacyRole])];
+        if (error || !user || !allRoles.includes('admin')) {
             return res.status(403).json({
                 error: 'Forbidden',
                 message: 'Admin access required'

@@ -1,19 +1,108 @@
-// Materials Routes
 const express = require('express');
 const router = express.Router();
+const AWS = require('aws-sdk');
+// const multerS3 = require('multer-s3');
+const supabaseConfig = require('../config/supabase');
+
+const s3 = new AWS.S3({
+    region: process.env.AWS_REGION,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+});
+
+// =============================================
+// POST /api/materials/:id/download - Download material file
+// =============================================
+router.post('/:id/download', async (req, res) => {
+    try {
+        const materialId = req.params.id;
+        const userId = getUserIdFromToken(req.headers.authorization);
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
+        }
+
+        // Fetch material info, including provider
+        const { data: material, error } = await supabaseAdmin
+            .from('materials')
+            .select('id, file_url, file_name, file_type, provider, s3_key')
+            .eq('id', materialId)
+            .single();
+        if (error || !material) {
+            return res.status(404).json({ error: 'Material not found', message: error?.message || 'No material found' });
+        }
+
+        // Handle S3 and Supabase providers
+        if (material.provider === 's3') {
+            // Debug: Log bucket and key
+            console.log('Generating signed URL with:');
+            console.log('Bucket:', process.env.AWS_S3_BUCKET);
+            console.log('Key:', material.s3_key);
+            const AWS = require('aws-sdk');
+            const s3 = new AWS.S3({
+                region: process.env.AWS_REGION,
+                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            });
+            // Use the s3_key column directly
+            const s3Key = material.s3_key;
+            if (!s3Key) {
+                return res.status(500).json({ error: 'Missing S3 key for this material.' });
+            }
+            const params = {
+                Bucket: process.env.AWS_S3_BUCKET,
+                Key: s3Key,
+                Expires: 60 * 10 // 10 minutes
+            };
+            try {
+                const signedUrl = s3.getSignedUrl('getObject', params);
+                return res.json({ file_url: signedUrl, file_name: material.file_name, file_type: material.file_type });
+            } catch (signErr) {
+                return res.status(500).json({ error: 'Failed to generate S3 download link', message: signErr.message });
+            }
+        } else if (material.provider === 'supabase' || !material.provider) {
+            // Return the public URL for Supabase
+            if (material.file_url) {
+                return res.json({ file_url: material.file_url, file_name: material.file_name, file_type: material.file_type });
+            } else {
+                return res.status(404).json({ error: 'File URL missing', message: 'No file URL found for material' });
+            }
+        } else {
+            return res.status(400).json({ error: 'Unknown file provider', message: 'Cannot handle this file provider' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error', message: err.message });
+    }
+});
+
+// Materials Routes
 const multer = require('multer');
 const { supabaseAdmin } = require('../config/supabase');
 require('dotenv').config();
 
-const MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024; // 500MB per file
+// =============================================
+// GET /api/materials/tutor/:tutorId - Get all materials for a tutor
+// =============================================
+router.get('/tutor/:tutorId', async (req, res) => {
+    const { tutorId } = req.params;
+    try {
+        const { data: materials, error } = await supabaseAdmin
+            .from('materials')
+            .select('*')
+            .eq('tutor_id', tutorId);
+
+        if (error) {
+            return res.status(500).json({ error: 'Failed to fetch materials', message: error.message });
+        }
+
+        res.json({ materials });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error', message: err.message });
+    }
+});
+
+const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024 * 1024; // 5GB per file for S3
 const ALLOWED_UPLOAD_MIME_TYPES = [
     'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-    'text/plain',
-    'image/png',
     'image/jpeg',
     'image/jpg',
     'video/mp4',
@@ -32,30 +121,12 @@ const upload = multer({
         if (ALLOWED_UPLOAD_MIME_TYPES.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('File type not allowed. Allowed types: PDF, DOC, DOCX, XLS, XLSX, TXT, PNG, JPG, MP4, MOV, WEBM, M4V'));
+            cb(new Error('Invalid file type'), false);
         }
     }
 });
 
-// Helper function to get user ID from token
-async function getUserIdFromToken(authHeader) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
-    }
-
-    const token = authHeader.split(' ')[1];
-    
-    try {
-        // Verify token and get user
-        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-        if (error || !user) {
-            return null;
-        }
-        return user.id;
-    } catch (error) {
-        return null;
-    }
-}
+const { getUserIdFromToken } = require('../utils/authHelpers');
 
 // Helper function to get user profile
 async function getUserProfile(userId) {
@@ -68,11 +139,12 @@ async function getUserProfile(userId) {
     return { data, error };
 }
 
+        // Import isTutor middleware
+        const isTutor = require('../middleware/isTutor');
 function normalizeRoles(user = {}) {
   const arr = Array.isArray(user.roles) ? user.roles : [];
   return [...new Set([...arr, user.role].filter(Boolean))];
 }
-
 function canUploadMaterials(user = {}) {
   const roles = normalizeRoles(user);
   return roles.includes('tutor') || roles.includes('admin');
@@ -145,43 +217,17 @@ router.get('/', async (req, res) => {
                 });
             }
 
-            if (latestApproval.access_expires_at) {
-                const expiresAt = new Date(latestApproval.access_expires_at);
-                const now = new Date();
-                if (expiresAt < now) {
-                    return res.status(403).json({
-                        error: 'Access expired',
-                        message: 'Your access to materials has expired. Please contact your tutor.'
-                    });
-                }
-            }
-
-            const tutorialGroup = latestApproval.tutorial_group_name || userProfile.tutorial_group;
-            if (!tutorialGroup) {
+        if (latestApproval.access_expires_at) {
+            const expiresAt = new Date(latestApproval.access_expires_at);
+            // You may want to check if access has expired here, e.g.:
+            if (expiresAt < new Date()) {
                 return res.status(403).json({
-                    error: 'No tutorial group assigned',
-                    message: 'No tutorial group is assigned to your approved access.'
+                    error: 'Access expired',
+                    message: 'Your approval access has expired.'
                 });
             }
-
-            query = query.eq('tutorial_group', tutorialGroup);
         }
-        
-        // Filter by tutor_id for tutors (show only their uploads)
-        if (userProfile?.role === 'tutor') {
-            query = query.eq('tutor_id', userId);
-        }
-
-        if (userProfile?.role !== 'student' && userProfile?.role !== 'tutor') {
-            return res.status(403).json({
-                error: 'Forbidden',
-                message: 'Invalid user role for materials access'
-            });
-        }
-
-        // Filter by course if provided
-        if (course) {
-            query = query.eq('course', course);
+        // End of student approval check
         }
 
         // Search in title and description if provided
@@ -270,6 +316,7 @@ router.post('/', upload.single('file'), async (req, res) => {
         });
     }
 
+
     // Check if file was uploaded
     if (!req.file) {
         return res.status(400).json({
@@ -282,61 +329,102 @@ router.post('/', upload.single('file'), async (req, res) => {
     const fileName = `${Date.now()}-${file.originalname}`;
     const filePath = `materials/${userId}/${fileName}`;
 
-    // Upload file to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabaseAdmin
-        .storage
-        .from('materials')
-        .upload(filePath, file.buffer, {
-            contentType: file.mimetype,
-            upsert: false
-        });
+    let file_url = '';
+    let provider = '';
 
-    if (uploadError) {
-        return res.status(500).json({
-            error: 'File upload failed',
-            message: uploadError.message
+    try {
+        let s3Key = null;
+        if (file.size <= 50 * 1024 * 1024) {
+            // Supabase Storage upload
+            const { data: uploadData, error: uploadError } = await supabaseAdmin
+                .storage
+                .from('materials')
+                .upload(filePath, file.buffer, {
+                    contentType: file.mimetype,
+                    upsert: false
+                });
+            if (uploadError) {
+                return res.status(500).json({
+                    error: 'File upload failed',
+                    message: uploadError.message
+                });
+            }
+            // Get public URL
+            const { data: { publicUrl } } = supabaseAdmin
+                .storage
+                .from('materials')
+                .getPublicUrl(filePath);
+            file_url = publicUrl;
+            provider = 'supabase';
+            s3Key = null;
+            s3Key = null; // <-- Ensure this is set for Supabase uploads
+        } else {
+            // AWS S3 upload
+            s3Key = fileName;
+            const AWS = require('aws-sdk');
+            const s3 = new AWS.S3({
+                region: process.env.AWS_REGION,
+                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            });
+            try {
+                const s3Result = await s3.upload({
+                    Bucket: process.env.AWS_S3_BUCKET,
+                    Key: s3Key, // <-- This is the S3 key
+                    Body: file.buffer,
+                    ContentType: file.mimetype,
+                    ACL: 'private',
+                }).promise();
+                file_url = s3Result.Location;
+                provider = 's3';
+            } catch (s3err) {
+                return res.status(500).json({ error: 'Failed to upload to S3', message: s3err.message });
+            }
+        }
+
+        // Save material record to database
+        const { data: material, error: dbError } = await supabaseAdmin
+            .from('materials')
+            .insert({
+                tutor_id: userId,
+                course: course,
+                title: title,
+                description: description || null,
+                file_name: file.originalname,
+                file_url: file_url,
+                file_size: file.size,
+                file_type: file.mimetype,
+                tutorial_group: profile.tutorial_group,
+                downloads_count: 0,
+                provider: provider,
+                s3_key: s3Key // <-- Save the same key in your DB
+            })
+            .select()
+            .single();
+
+        if (dbError) {
+            // If database insert fails, try to delete uploaded file
+            if (provider === 'supabase') {
+                await supabaseAdmin.storage.from('materials').remove([filePath]);
+            }
+            return res.status(500).json({
+                error: 'Failed to save material',
+                message: dbError.message
+            });
+        }
+
+        res.status(201).json({
+            success: true,
+            message: 'Material uploaded successfully',
+            material: material
+        });
+    } catch (error) {
+        console.error('Upload material error:', error);
+        res.status(500).json({
+            error: 'Internal server error',
+            message: error.message
         });
     }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabaseAdmin
-        .storage
-        .from('materials')
-        .getPublicUrl(filePath);
-
-    // Save material record to database
-    const { data: material, error: dbError } = await supabaseAdmin
-        .from('materials')
-        .insert({
-            tutor_id: userId,
-            course: course,
-            title: title,
-            description: description || null,
-            file_name: file.originalname,
-            file_url: publicUrl,
-            file_size: file.size,
-            file_type: file.mimetype,
-            tutorial_group: profile.tutorial_group,
-            downloads_count: 0
-        })
-        .select()
-        .single();
-
-    if (dbError) {
-        // If database insert fails, try to delete uploaded file
-        await supabaseAdmin.storage.from('materials').remove([filePath]);
-        
-        return res.status(500).json({
-            error: 'Failed to save material',
-            message: dbError.message
-        });
-    }
-
-    res.status(201).json({
-        success: true,
-        message: 'Material uploaded successfully',
-        material: material
-    });
 
   } catch (error) {
     console.error('Upload material error:', error);
@@ -385,161 +473,12 @@ router.get('/:id', async (req, res) => {
 });
 
 // =============================================
-// POST /api/materials/:id/download - Increment download count
-// =============================================
-router.post('/:id/download', async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // Check authentication
-        const userId = await getUserIdFromToken(req.headers.authorization);
-        if (userId) {
-            // If authenticated, verify student access hasn't expired
-            const { data: userProfile, error: profileError } = await getUserProfile(userId);
-            
-            if (!profileError && userProfile && userProfile.role === 'student') {
-                // Check student approval and expiry
-                const { data: latestApproval, error: approvalError } = await supabaseAdmin
-                    .from('student_approvals')
-                    .select('status, access_expires_at')
-                    .eq('student_id', userId)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .single();
-
-                if (!approvalError && latestApproval) {
-                    if (latestApproval.status !== 'approved') {
-                        return res.status(403).json({
-                            error: 'Approval required',
-                            message: 'Your account is pending tutor approval.'
-                        });
-                    }
-
-                    // Check expiry
-                    if (latestApproval.access_expires_at) {
-                        const expiresAt = new Date(latestApproval.access_expires_at);
-                        const now = new Date();
-                        if (expiresAt < now) {
-                            return res.status(403).json({
-                                error: 'Access expired',
-                                message: 'Your access to materials has expired. Please contact your tutor.'
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        // Get current material
-        const { data: currentMaterial, error: fetchError } = await supabaseAdmin
-            .from('materials')
-            .select('downloads_count')
-            .eq('id', id)
-            .single();
-
-        if (fetchError) {
-            return res.status(404).json({
-                error: 'Material not found',
-                message: fetchError.message
-            });
-        }
-
-        // Increment download count
-        const { data: material, error } = await supabaseAdmin
-            .from('materials')
-            .update({ downloads_count: (currentMaterial.downloads_count || 0) + 1 })
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) {
-            return res.status(500).json({
-                error: 'Failed to update download count',
-                message: error.message
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'Download count updated',
-            material: material
-        });
-
-    } catch (error) {
-        console.error('Download count error:', error);
-        res.status(500).json({
-            error: 'Internal server error',
-            message: error.message
-        });
-    }
-});
-
-// =============================================
-// GET /api/materials/tutor/:tutorId - Get materials by tutor
-// =============================================
-router.get('/tutor/:tutorId', async (req, res) => {
-    try {
-        const { tutorId } = req.params;
-
-        const { data: materials, error } = await supabaseAdmin
-            .from('materials')
-            .select('*')
-            .eq('tutor_id', tutorId)
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            return res.status(500).json({
-                error: 'Failed to fetch materials',
-                message: error.message
-            });
-        }
-
-        res.json({
-            success: true,
-            materials: materials || [],
-            count: materials?.length || 0
-        });
-
-    } catch (error) {
-        console.error('Get tutor materials error:', error);
-        res.status(500).json({
-            error: 'Internal server error',
-            message: error.message
-        });
-    }
-});
-
-// =============================================
 // DELETE /api/materials/:id - Delete material (tutor only)
 // =============================================
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', isTutor, async (req, res) => {
+
     try {
-        // Check authentication
-        const userId = await getUserIdFromToken(req.headers.authorization);
-        if (!userId) {
-            return res.status(401).json({
-                error: 'Unauthorized',
-                message: 'Authentication required'
-            });
-        }
-
-        // Get user profile to check role
-        const { data: profile, error: profileError } = await getUserProfile(userId);
-        if (profileError || !profile) {
-            return res.status(404).json({
-                error: 'Profile not found',
-                message: 'User profile does not exist'
-            });
-        }
-
-        // Only tutors can delete materials
-        if (profile.role !== 'tutor') {
-            return res.status(403).json({
-                error: 'Forbidden',
-                message: 'Only tutors can delete materials'
-            });
-        }
-
+        const userId = req.user.id; // Set by isTutor middleware
         const { id } = req.params;
 
         // Get material to verify ownership and get file path
@@ -556,6 +495,9 @@ router.delete('/:id', async (req, res) => {
             });
         }
 
+        // Debug log for troubleshooting 403 errors
+        console.log('[DELETE /api/materials/:id] Authenticated tutor:', userId, 'Material tutor:', material.tutor_id);
+
         // Verify the material belongs to the authenticated tutor
         if (material.tutor_id !== userId) {
             return res.status(403).json({
@@ -565,21 +507,16 @@ router.delete('/:id', async (req, res) => {
         }
 
         // Extract file path from file_url
-        // File URL format: https://[project].supabase.co/storage/v1/object/public/materials/[path]
-        // We need to extract: materials/[userId]/[fileName]
         let filePath = null;
         try {
             const url = new URL(material.file_url);
-            // Extract path after /materials/
             const pathMatch = url.pathname.match(/\/materials\/(.+)$/);
             if (pathMatch) {
                 filePath = `materials/${pathMatch[1]}`;
             } else {
-                // Fallback: construct path from userId and file_name
                 filePath = `materials/${userId}/${material.file_name}`;
             }
         } catch (urlError) {
-            // If URL parsing fails, construct path from userId and file_name
             filePath = `materials/${userId}/${material.file_name}`;
         }
 
@@ -589,11 +526,8 @@ router.delete('/:id', async (req, res) => {
                 .storage
                 .from('materials')
                 .remove([filePath]);
-
-            // Log storage deletion errors but don't fail if file doesn't exist
             if (storageError) {
                 console.warn('Storage deletion warning:', storageError.message);
-                // Continue with database deletion even if storage deletion fails
             }
         }
 
@@ -602,7 +536,7 @@ router.delete('/:id', async (req, res) => {
             .from('materials')
             .delete()
             .eq('id', id)
-            .eq('tutor_id', userId); // Extra safety check
+            .eq('tutor_id', userId);
 
         if (deleteError) {
             return res.status(500).json({
@@ -624,6 +558,5 @@ router.delete('/:id', async (req, res) => {
         });
     }
 });
-
 module.exports = router;
 
