@@ -1,6 +1,11 @@
 // Feedback API Utility
-// Use shared API_URL from auth.js or materials.js (already initialized)
-if (typeof window.API_URL === "undefined") { window.API_URL = "http://localhost:3001"; }
+// Robust API_URL resolver for all environments
+let API_URL = 'http://localhost:3001';
+if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
+    API_URL = import.meta.env.VITE_API_URL;
+} else if (typeof window !== 'undefined' && window.API_URL) {
+    API_URL = window.API_URL;
+}
 
 /**
  * Get authentication token from localStorage
@@ -23,7 +28,7 @@ async function submitFeedback(materialId, rating, comment = null) {
             throw new Error('Authentication required');
         }
 
-        const response = await fetch(`${window.API_URL}/api/feedback`, {
+        const response = await fetch(`${API_URL}/api/feedback`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

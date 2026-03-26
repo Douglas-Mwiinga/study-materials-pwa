@@ -1,3 +1,9 @@
+module.exports = {
+  // ...existing config
+  parserOptions: {
+    sourceType: 'module',
+  },
+};
 import js from '@eslint/js';
 import globals from 'globals';
 

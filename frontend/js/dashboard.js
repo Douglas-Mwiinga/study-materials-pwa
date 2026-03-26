@@ -1,6 +1,11 @@
 // Dashboard API Utility
-// Use shared API_URL from auth.js or materials.js (already initialized)
-if (typeof window.API_URL === "undefined") { window.API_URL = "http://localhost:3001"; }
+// Robust API_URL resolver for all environments
+let API_URL = 'http://localhost:3001';
+if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
+    API_URL = import.meta.env.VITE_API_URL;
+} else if (typeof window !== 'undefined' && window.API_URL) {
+    API_URL = window.API_URL;
+}
 
 /**
  * Get authentication token from localStorage
@@ -29,7 +34,7 @@ async function getTutorMaterials(tutorId) {
             throw new Error('Authentication required');
         }
 
-        const response = await fetch(`${window.API_URL}/api/materials/tutor/${tutorId}`, {
+        const response = await fetch(`${API_URL}/api/materials/tutor/${tutorId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -62,7 +67,7 @@ async function getTutorFeedback(tutorId) {
             throw new Error('Authentication required');
         }
 
-        const response = await fetch(`${window.API_URL}/api/feedback/tutor/${tutorId}`, {
+        const response = await fetch(`${API_URL}/api/feedback/tutor/${tutorId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -94,7 +99,7 @@ async function getApprovedStudentsCount() {
             throw new Error('Authentication required');
         }
 
-        const response = await fetch(`${window.API_URL}/api/student-access/approved`, {
+        const response = await fetch(`${API_URL}/api/student-access/approved`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

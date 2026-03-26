@@ -1,7 +1,10 @@
 // Materials API Utility
-// Use shared API_URL to avoid redeclaration errors
-if (typeof window.API_URL === 'undefined') {
-    window.API_URL = 'http://localhost:3001';
+// Robust API_URL resolver for all environments
+let API_URL = 'http://localhost:3001';
+if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
+    API_URL = import.meta.env.VITE_API_URL;
+} else if (typeof window !== 'undefined' && window.API_URL) {
+    API_URL = window.API_URL;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024; // 500MB per file

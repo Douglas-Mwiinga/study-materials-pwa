@@ -1,11 +1,13 @@
 // Authentication API Utility
 // Handles all authentication-related API calls
 
-// Use shared API_URL to avoid redeclaration errors
-if (typeof window.API_URL === 'undefined') {
-    window.API_URL = 'http://localhost:3001';
+// Robust API_URL resolver for all environments
+let API_URL = 'http://localhost:3001';
+if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
+    API_URL = import.meta.env.VITE_API_URL;
+} else if (typeof window !== 'undefined' && window.API_URL) {
+    API_URL = window.API_URL;
 }
-const API_URL = window.API_URL;
 
 function normalizeRoles(user) {
     const rolesFromArray = Array.isArray(user?.roles) ? user.roles : [];

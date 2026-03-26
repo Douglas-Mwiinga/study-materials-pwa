@@ -355,22 +355,26 @@ router.post('/logout', async (req, res) => {
 // =============================================
 const { getUserIdFromToken } = require('../utils/authHelpers');
 router.get('/me', async (req, res) => {
-    console.log('[GET /api/auth/me] Headers:', req.headers);
-    const authHeader = req.headers.authorization;
-    const userId = getUserIdFromToken(authHeader);
-    if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+    try {
+        const authHeader = req.headers.authorization;
+        const userId = getUserIdFromToken(authHeader);
+        if (!userId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+        // Fetch full user profile
+        const { data: profile, error } = await supabaseAdmin
+            .from('profiles')
+            .select('id, email, name, role, roles, tutorial_group, tutor_status')
+            .eq('id', userId)
+            .single();
+        if (error || !profile) {
+            return res.status(404).json({ error: 'User profile not found' });
+        }
+        res.json({ user: profile });
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-    // Fetch full user profile
-    const { data: profile, error } = await supabaseAdmin
-        .from('profiles')
-        .select('id, email, name, role, roles, tutorial_group, tutor_status')
-        .eq('id', userId)
-        .single();
-    if (error || !profile) {
-        return res.status(404).json({ error: 'User profile not found' });
-    }
-    res.json({ user: profile });
 });
 
 module.exports = router;
