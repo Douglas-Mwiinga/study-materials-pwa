@@ -249,14 +249,15 @@ function getTutorialGroup() {
  */
 function redirectByRole() {
     const role = getUserRole();
-    
-    if (role === 'admin') {
+    const currentPage = window.location.pathname.split('/').pop();
+
+    if (role === 'admin' && currentPage !== 'dashboard.html') {
         window.location.href = 'dashboard.html';
-    } else if (role === 'tutor') {
+    } else if (role === 'tutor' && currentPage !== 'dashboard.html') {
         window.location.href = 'dashboard.html';
-    } else if (role === 'student') {
+    } else if (role === 'student' && currentPage !== 'materials.html') {
         window.location.href = 'materials.html';
-    } else {
+    } else if (currentPage !== 'login.html') {
         window.location.href = 'login.html';
     }
 }
