@@ -1,9 +1,3 @@
-module.exports = {
-  // ...existing config
-  parserOptions: {
-    sourceType: 'module',
-  },
-};
 import js from '@eslint/js';
 import globals from 'globals';
 
@@ -22,7 +16,7 @@ export default [
     files: ['frontend/js/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'script',
+      sourceType: 'module',
       globals: {
         ...globals.browser,
         module: 'readonly'
@@ -38,6 +32,21 @@ export default [
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
+      globals: {
+        ...globals.node
+      }
+    },
+    rules: {
+      'no-console': 'off',
+      'no-unused-vars': 'off'
+    }
+  },
+
+  {
+    files: ['api/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
       globals: {
         ...globals.node
       }

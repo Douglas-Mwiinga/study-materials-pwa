@@ -1,12 +1,17 @@
-import formidable from 'formidable';
-import { supabaseAdmin } from '../../backend/config/supabase.js';
-import emailService from '../../backend/services/email.js';
+const formidable = require('formidable');
+const { supabaseAdmin } = require('../../backend/config/supabase.js');
+const emailService = require('../../backend/services/email.js');
 
 function normalizeRoles(profile) {
     const rolesFromArray = Array.isArray(profile?.roles) ? profile.roles : [];
     const legacyRole = profile?.role ? [profile.role] : [];
     return [...new Set([...rolesFromArray, ...legacyRole])].filter(Boolean);
 }
+
+module.exports = {
+    config,
+    default: handler
+};
 
 function primaryRoleFromRoles(roles = []) {
     if (roles.includes('admin')) return 'admin';
@@ -15,13 +20,13 @@ function primaryRoleFromRoles(roles = []) {
     return null;
 }
 
-export const config = {
+const config = {
     api: {
         bodyParser: false,
     },
 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
     // CORS preflight
     if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Credentials', 'true');
