@@ -251,6 +251,8 @@ function redirectByRole() {
     const role = getUserRole();
     const currentPage = window.location.pathname.split('/').pop();
 
+    console.log('redirectByRole called on', window.location.pathname);
+
     if (role === 'admin' && currentPage !== 'dashboard.html') {
         window.location.href = 'dashboard.html';
     } else if (role === 'tutor' && currentPage !== 'dashboard.html') {
@@ -258,7 +260,7 @@ function redirectByRole() {
     } else if (role === 'student' && currentPage !== 'materials.html') {
         window.location.href = 'materials.html';
     } else if (currentPage !== 'login.html') {
-        window.location.href = 'login.html';
+        window.location.href = '/pages/login.html';
     }
 }
 
