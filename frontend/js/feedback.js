@@ -1,10 +1,13 @@
 // Feedback API Utility
 // Robust API_URL resolver for all environments
-let API_URL = 'http://localhost:3001';
+let API_URL = '';
 if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
     API_URL = import.meta.env.VITE_API_URL;
 } else if (typeof window !== 'undefined' && window.API_URL) {
     API_URL = window.API_URL;
+}
+if (!API_URL) {
+    console.warn('API_URL is not set! Please configure VITE_API_URL in your environment variables.');
 }
 
 /**
