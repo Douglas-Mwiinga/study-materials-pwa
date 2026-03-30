@@ -129,6 +129,10 @@
     <script type="module" src="../js/materials.js"></script>
     <script type="module" src="../js/feedback.js"></script>
     <script>
+        // Redirect by role on protected page
+        if (typeof window.redirectByRole === 'function') {
+            window.redirectByRole();
+        }
         function safeGetUser() {
             if (typeof window.getUser === 'function') {
                 return window.getUser();

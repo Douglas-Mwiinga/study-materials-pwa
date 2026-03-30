@@ -1600,6 +1600,10 @@
         });
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // Redirect by role on protected page
+            if (typeof window.redirectByRole === 'function') {
+                window.redirectByRole();
+            }
             const expiryModeSelect = document.getElementById('expiryMode');
             if (expiryModeSelect) {
                 expiryModeSelect.addEventListener('change', (event) => {

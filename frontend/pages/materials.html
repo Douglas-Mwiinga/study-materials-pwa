@@ -692,9 +692,17 @@
 
         // Wait for DOM and scripts to be ready
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initMaterials);
+            document.addEventListener('DOMContentLoaded', () => {
+                if (typeof window.redirectByRole === 'function') {
+                    window.redirectByRole();
+                }
+                initMaterials();
+            });
         } else {
             // DOM is already loaded (scripts ran after)
+            if (typeof window.redirectByRole === 'function') {
+                window.redirectByRole();
+            }
             setTimeout(initMaterials, 100);
         }
 

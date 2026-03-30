@@ -2,18 +2,19 @@
 -- Run this in Supabase SQL Editor: https://supabase.com/dashboard/project/_/sql
 
 -- Enable UUID extension (if not already enabled)
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- NOTE: In Supabase, enable the "uuid-ossp" extension from the dashboard (Database > Extensions).
 
 -- =============================================
 -- 1. USER PROFILES TABLE
 -- =============================================
 -- Extends Supabase auth.users with additional profile info
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('student', 'tutor')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Enable Row Level Security
@@ -22,11 +23,11 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 -- Profiles policies: Users can read their own profile
 CREATE POLICY "Users can view own profile" 
     ON profiles FOR SELECT 
-    USING (auth.uid() = id);
+    USING (auth.uid()::uuid = id);
 
 CREATE POLICY "Users can update own profile" 
     ON profiles FOR UPDATE 
-    USING (auth.uid() = id);
+    USING (auth.uid()::uuid = id);
 
 -- =============================================
 -- 2. MATERIALS TABLE
