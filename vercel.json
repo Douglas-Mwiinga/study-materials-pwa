@@ -1,6 +1,6 @@
 {
   "outputDirectory": "frontend/dist",
   "rewrites": [
-    { "source": "/((?!api|_next|static|.*\\..*).*)", "destination": "/index.html" }
+    { "source": "/((?!.*\\..*).*)", "destination": "/index.html" }
   ]
 }
