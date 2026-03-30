@@ -57,10 +57,16 @@ async function signup(email, password, role, name, paymentScreenshot, tutorialGr
             body: formData
         });
 
-        const data = await response.json();
+        let data = null;
+        try {
+            data = await response.json();
+        } catch {
+            // If response is empty or not JSON, set data to empty object
+            data = {};
+        }
 
         if (!response.ok) {
-            throw new Error(data.message || data.error || 'Signup failed');
+            throw new Error(data.message || data.error || `Signup failed (HTTP ${response.status})`);
         }
 
         return data;
@@ -86,10 +92,16 @@ async function login(email, password) {
             body: JSON.stringify({ email, password })
         });
 
-        const data = await response.json();
+        let data = null;
+        try {
+            data = await response.json();
+        } catch {
+            // If response is empty or not JSON, set data to empty object
+            data = {};
+        }
 
         if (!response.ok) {
-            throw new Error(data.message || data.error || 'Login failed');
+            throw new Error(data.message || data.error || `Login failed (HTTP ${response.status})`);
         }
 
         // Store authentication data
