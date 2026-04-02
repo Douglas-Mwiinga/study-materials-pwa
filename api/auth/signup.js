@@ -1,6 +1,6 @@
 const formidable = require('formidable');
-const { supabaseAdmin } = require('../../backend/config/supabase.js');
-const emailService = require('../../backend/services/email.js');
+import { supabaseAdmin } from '../config/supabase.js';
+import emailService from '../services/email.js';
 
 function normalizeRoles(profile) {
     const rolesFromArray = Array.isArray(profile?.roles) ? profile.roles : [];

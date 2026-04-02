@@ -1,5 +1,5 @@
-import { supabaseAdmin } from '../../backend/config/supabase.js';
-import { getUserIdFromToken } from '../../backend/utils/authHelpers.js';
+import { supabaseAdmin } from '../config/supabase.js';
+import { getUserIdFromToken } from '../utils/authHelpers.js';
 
 export default async function handler(req, res) {
     // CORS preflight

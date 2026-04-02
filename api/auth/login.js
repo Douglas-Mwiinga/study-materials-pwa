@@ -1,5 +1,4 @@
-import { supabase } from '../../backend/config/supabase.js';
-import { supabaseAdmin } from '../../backend/config/supabase.js';
+import { supabase, supabaseAdmin } from '../config/supabase.js';
 import jwt from 'jsonwebtoken';
 
 function normalizeRoles(profile) {
