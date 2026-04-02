@@ -191,12 +191,18 @@
                             return allowedRoles.some((role) => roles.includes(role));
                         }
 
+                        function resolveApiBase() {
+                            const raw = (window.API_URL || '').replace(/\/+$/, '');
+                            if (!raw) return '/api';
+                            return raw.endsWith('/api') ? raw : `${raw}/api`;
+                        }
+
                         try {
                             const token = localStorage.getItem('authToken');
                             if (!token) return;
 
-                            const baseUrl = window.API_URL || 'http://localhost:3001';
-                            const response = await fetch(`${baseUrl}/api/auth/me`, {
+                            const baseUrl = resolveApiBase();
+                            const response = await fetch(`${baseUrl}/auth/me`, {
                                 headers: { 'Authorization': `Bearer ${token}` }
                             });
                             if (!response.ok) return;
@@ -285,8 +291,8 @@
                             const token = localStorage.getItem('authToken');
                             if (!token) return;
 
-                            const baseUrl = window.API_URL || 'http://localhost:3001';
-                            const response = await fetch(`${baseUrl}/api/auth/me`, {
+                            const baseUrl = resolveApiBase();
+                            const response = await fetch(`${baseUrl}/auth/me`, {
                                 headers: { 'Authorization': `Bearer ${token}` }
                             });
                             
@@ -358,7 +364,7 @@
                                         }
                                         
                                         try {
-                                            const response = await fetch(`${baseUrl}/api/tutor-approvals/appeal/${user.id}`, {
+                                            const response = await fetch(`${baseUrl}/tutor-approvals/appeal/${user.id}`, {
                                                 method: 'POST',
                                                 headers: {
                                                     'Authorization': `Bearer ${token}`,
@@ -580,7 +586,11 @@
     <script type="module" src="../js/feedback.js"></script>
     <script type="module" src="../js/dashboard.js"></script>
     <script>
-        const DASHBOARD_API_URL = window.API_URL || 'http://localhost:3001';
+        const DASHBOARD_API_URL = (() => {
+            const raw = (window.API_URL || '').replace(/\/+$/, '');
+            if (!raw) return '/api';
+            return raw.endsWith('/api') ? raw : `${raw}/api`;
+        })();
 
         function getStoredToken() {
             return localStorage.getItem('authToken') || localStorage.getItem('token') || '';
@@ -630,7 +640,7 @@
             }
 
             try {
-                const response = await fetch(`${DASHBOARD_API_URL}/api/auth/me`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/auth/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
@@ -665,7 +675,7 @@
                 const token = getStoredToken();
                 if (!token) return;
 
-                const response = await fetch(`${DASHBOARD_API_URL}/api/auth/me`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/auth/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
@@ -774,8 +784,16 @@
                 return allowedRoles.some((role) => roles.includes(role));
             }
 
-            // Use getUser() from auth.js instead of getCurrentUser() to avoid conflict
-            const user = typeof getUser === 'function' ? getUser() : getCurrentUser();
+            // Use auth.js helpers safely and avoid redirecting on transient API errors
+            let user = typeof getUser === 'function' ? getUser() : null;
+            if (!user && typeof getCurrentUser === 'function') {
+                try {
+                    const current = await getCurrentUser();
+                    user = current?.user || current || null;
+                } catch {
+                    user = null;
+                }
+            }
             if (!user || !hasAnyRole(user, ['tutor', 'admin'])) {
                 console.error('Not a tutor or not logged in');
                 window.location.href = 'login.html';
@@ -850,7 +868,7 @@
                     return;
                 }
                 
-                const response = await fetch(`${DASHBOARD_API_URL}/api/auth/me`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/auth/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
@@ -882,22 +900,21 @@
 
         async function loadAdminData() {
             const token = localStorage.getItem('authToken');
-            const API_URL = window.API_URL || 'http://localhost:3001';
             const debugLine = document.getElementById('adminDebugLine');
             
             try {
                 // Load stats and tutors in parallel
                 const [statsResponse, pendingResponse, approvedResponse, rejectedResponse] = await Promise.all([
-                    fetch(`${DASHBOARD_API_URL}/api/admin/stats`, {
+                    fetch(`${DASHBOARD_API_URL}/admin/stats`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     }),
-                    fetch(`${DASHBOARD_API_URL}/api/admin/tutors/pending`, {
+                    fetch(`${DASHBOARD_API_URL}/admin/tutors/pending`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     }),
-                    fetch(`${DASHBOARD_API_URL}/api/admin/tutors/approved`, {
+                    fetch(`${DASHBOARD_API_URL}/admin/tutors/approved`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     }),
-                    fetch(`${DASHBOARD_API_URL}/api/admin/tutors/rejected`, {
+                    fetch(`${DASHBOARD_API_URL}/admin/tutors/rejected`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     })
                 ]);
@@ -1055,9 +1072,7 @@
             
             try {
                 const token = localStorage.getItem('authToken');
-                const API_URL = window.API_URL || 'http://localhost:3001';
-                
-                const response = await fetch(`${DASHBOARD_API_URL}/api/admin/tutors/approve/${tutorId}`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/admin/tutors/approve/${tutorId}`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -1087,9 +1102,7 @@
             
             try {
                 const token = localStorage.getItem('authToken');
-                const API_URL = window.API_URL || 'http://localhost:3001';
-                
-                const response = await fetch(`${DASHBOARD_API_URL}/api/admin/tutors/reject/${tutorId}`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/admin/tutors/reject/${tutorId}`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -1286,7 +1299,7 @@
                 const pendingList = document.getElementById('pendingStudentsList');
                 if (!pendingList) return;
 
-                const response = await fetch(`${DASHBOARD_API_URL}/api/student-access/pending`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/student-access/pending`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -1350,7 +1363,7 @@
 
             try {
                 const endpoint = action === 'approve' ? 'approve' : 'reject';
-                const response = await fetch(`${DASHBOARD_API_URL}/api/student-access/${endpoint}/${approvalId}`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/student-access/${endpoint}/${approvalId}`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -1381,7 +1394,7 @@
                 const approvedList = document.getElementById('approvedStudentsList');
                 if (!approvedList) return;
 
-                const response = await fetch(`${DASHBOARD_API_URL}/api/student-access/approved`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/student-access/approved`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -1448,7 +1461,7 @@
             if (!token) return;
 
             try {
-                const response = await fetch(`${DASHBOARD_API_URL}/api/student-access/revoke/${approvalId}`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/student-access/revoke/${approvalId}`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -1482,7 +1495,7 @@
             if (!token) return;
 
             try {
-                const response = await fetch(`${DASHBOARD_API_URL}/api/student-access/settings`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/student-access/settings`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -1564,7 +1577,7 @@
             }
 
             try {
-                const response = await fetch(`${DASHBOARD_API_URL}/api/student-access/settings`, {
+                const response = await fetch(`${DASHBOARD_API_URL}/student-access/settings`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -1647,7 +1660,7 @@
     </script>
     <script>
         (function () {
-            const apiUrl = window.API_URL || 'http://localhost:3001';
+            const apiUrl = DASHBOARD_API_URL;
 
             function getToken() {
                 return localStorage.getItem('authToken') || localStorage.getItem('token') || '';
@@ -1687,7 +1700,7 @@
                 if (!token) return;
 
                 try {
-                    const response = await fetch(`${apiUrl}/api/auth/me`, {
+                    const response = await fetch(`${apiUrl}/auth/me`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
 

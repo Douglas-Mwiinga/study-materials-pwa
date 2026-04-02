@@ -34,6 +34,19 @@ function getCurrentUser() {
     return userStr ? JSON.parse(userStr) : null;
 }
 
+async function readJsonSafely(response) {
+    const text = await response.text();
+    if (!text) {
+        return {};
+    }
+
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { message: text };
+    }
+}
+
 /**
  * Get tutor's materials
  * @param {string} tutorId - Tutor ID
@@ -54,10 +67,10 @@ async function getTutorMaterials(tutorId) {
             }
         });
 
-        const data = await response.json();
+        const data = await readJsonSafely(response);
 
         if (!response.ok) {
-            throw new Error(data.message || data.error || 'Failed to fetch materials');
+            throw new Error(data.message || data.error || `Failed to fetch materials (HTTP ${response.status})`);
         }
 
         return data;
@@ -87,10 +100,10 @@ async function getTutorFeedback(tutorId) {
             }
         });
 
-        const data = await response.json();
+        const data = await readJsonSafely(response);
 
         if (!response.ok) {
-            throw new Error(data.message || data.error || 'Failed to fetch feedback');
+            throw new Error(data.message || data.error || `Failed to fetch feedback (HTTP ${response.status})`);
         }
 
         return data;
@@ -119,10 +132,10 @@ async function getApprovedStudentsCount() {
             }
         });
 
-        const result = await response.json();
+        const result = await readJsonSafely(response);
 
         if (!response.ok) {
-            throw new Error(result.message || result.error || 'Failed to fetch approved students');
+            throw new Error(result.message || result.error || `Failed to fetch approved students (HTTP ${response.status})`);
         }
 
         return result.data ? result.data.length : 0;
