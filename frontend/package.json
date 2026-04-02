@@ -1,0 +1,45 @@
+{
+  "name": "study-materials-pwa",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Smart Up - Study Materials PWA",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "serve:frontend": "cd frontend/pages && python -m http.server 8080 || npx http-server -p 8080",
+    "start:backend": "cd backend && npm start",
+    "dev:backend": "cd backend && npm run dev"
+  },
+  "keywords": [
+    "pwa",
+    "education",
+    "study-materials"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.101.1",
+    "cors": "^2.8.6",
+    "jsonwebtoken": "^9.0.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@babel/parser": "^7.29.2",
+    "@babel/traverse": "^7.29.0",
+    "@eslint/js": "^9.0.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "glob": "^13.0.6",
+    "globals": "^17.4.0",
+    "vite": "^8.0.3"
+  }
+}
