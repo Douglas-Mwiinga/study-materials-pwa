@@ -3,52 +3,28 @@ const require = createRequire(import.meta.url);
 
 const express = require('express');
 const cors = require('cors');
-
-const authRoutes = require('../backend/routes/auth');
-const materialsRoutes = require('../backend/routes/materials');
-const feedbackRoutes = require('../backend/routes/feedback');
-const studentAccessRoutes = require('../backend/routes/student-access');
-const tutorApprovalsRoutes = require('../backend/routes/tutor-approvals');
-const adminRoutes = require('../backend/routes/admin');
+const authRoutes = require('../../backend/routes/auth');
 
 let app;
 
-function createApp() {
-  const server = express();
+function getApp() {
+  if (app) return app;
 
-  server.use(cors({ origin: true, credentials: true }));
-  server.use(express.json());
-  server.use(express.urlencoded({ extended: true }));
+  app = express();
+  app.use(cors({ origin: true, credentials: true }));
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
-  // Health (both forms)
-  server.get('/health', (_req, res) => {
-    res.json({ status: 'healthy', timestamp: new Date().toISOString() });
-  });
-  server.get('/api/health', (_req, res) => {
-    res.json({ status: 'healthy', timestamp: new Date().toISOString() });
-  });
+  // In this function, /api/auth/* maps to /*
+  app.use('/', authRoutes);
 
-  // Mount both forms to tolerate Vercel path behavior
-  const mount = (base, router) => {
-    server.use(base, router);
-    server.use(`/api${base}`, router);
-  };
-
-  mount('/auth', authRoutes);
-  mount('/materials', materialsRoutes);
-  mount('/feedback', feedbackRoutes);
-  mount('/student-access', studentAccessRoutes);
-  mount('/tutor-approvals', tutorApprovalsRoutes);
-  mount('/admin', adminRoutes);
-
-  server.use((_req, res) => {
-    res.status(404).json({ error: 'Not found', message: 'API endpoint not found' });
+  app.use((_req, res) => {
+    res.status(404).json({ error: 'Not found', message: 'Auth endpoint not found' });
   });
 
-  return server;
+  return app;
 }
 
 export default async function handler(req, res) {
-  if (!app) app = createApp();
-  return app(req, res);
+  return getApp()(req, res);
 }
