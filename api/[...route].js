@@ -20,22 +20,26 @@ function createApp() {
   server.use(express.json());
   server.use(express.urlencoded({ extended: true }));
 
-  // Normalize /api prefix
-  server.use((req, _res, next) => {
-    if (req.url.startsWith('/api/')) req.url = req.url.slice(4) || '/';
-    next();
-  });
-
+  // Health (both forms)
   server.get('/health', (_req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
   });
+  server.get('/api/health', (_req, res) => {
+    res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+  });
 
-  server.use('/auth', authRoutes);
-  server.use('/materials', materialsRoutes);
-  server.use('/feedback', feedbackRoutes);
-  server.use('/student-access', studentAccessRoutes);
-  server.use('/tutor-approvals', tutorApprovalsRoutes);
-  server.use('/admin', adminRoutes);
+  // Mount both forms to tolerate Vercel path behavior
+  const mount = (base, router) => {
+    server.use(base, router);
+    server.use(`/api${base}`, router);
+  };
+
+  mount('/auth', authRoutes);
+  mount('/materials', materialsRoutes);
+  mount('/feedback', feedbackRoutes);
+  mount('/student-access', studentAccessRoutes);
+  mount('/tutor-approvals', tutorApprovalsRoutes);
+  mount('/admin', adminRoutes);
 
   server.use((_req, res) => {
     res.status(404).json({ error: 'Not found', message: 'API endpoint not found' });
