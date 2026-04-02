@@ -28,18 +28,24 @@ function createApp() {
     const tutorApprovalsRoutes = require('../backend/routes/tutor-approvals');
     const adminRoutes = require('../backend/routes/admin');
 
-    server.use('/api/auth', authRoutes);
-    server.use('/api/materials', materialsRoutes);
-    server.use('/api/feedback', feedbackRoutes);
-    server.use('/api/student-access', studentAccessRoutes);
-    server.use('/api/tutor-approvals', tutorApprovalsRoutes);
-    server.use('/api/admin', adminRoutes);
+    // Support both Vercel catch-all paths (/auth/...) and explicit /api/auth/...
+    const mount = (path, router) => {
+        server.use(path, router);
+        server.use(`/api${path}`, router);
+    };
 
-    server.get('/api/health', (_req, res) => {
+    mount('/auth', authRoutes);
+    mount('/materials', materialsRoutes);
+    mount('/feedback', feedbackRoutes);
+    mount('/student-access', studentAccessRoutes);
+    mount('/tutor-approvals', tutorApprovalsRoutes);
+    mount('/admin', adminRoutes);
+
+    server.get(['/health', '/api/health'], (_req, res) => {
         res.json({ status: 'healthy', timestamp: new Date().toISOString() });
     });
 
-    server.use('/api', (_req, res) => {
+    server.use((_req, res) => {
         res.status(404).json({ error: 'Not found', message: 'API endpoint not found' });
     });
 
@@ -55,6 +61,5 @@ export default async function handler(req, res) {
     if (!app) {
         app = createApp();
     }
-
     return app(req, res);
 }
