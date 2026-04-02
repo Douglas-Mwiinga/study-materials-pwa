@@ -34,6 +34,17 @@ function getPrimaryRoleFromRoles(roles = []) {
     return null;
 }
 
+const ROUTES = {
+    login: '/pages/login.html',
+    signup: '/pages/signup.html',
+    dashboard: '/pages/dashboard.html',
+    materials: '/pages/materials.html'
+};
+
+function endsWithAny(path, suffixes) {
+    return suffixes.some((suffix) => path.endsWith(suffix));
+}
+
 /**
  * Sign up a new user
  * @param {string} email - User email
@@ -96,6 +107,7 @@ async function login(email, password) {
             headers: {
                 'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({ email, password })
         });
 
@@ -204,20 +216,34 @@ async function getCurrentUser() {
         const token = localStorage.getItem('authToken');
         
         if (!token) {
-            throw new Error('No authentication token found');
+            return null;
         }
 
         const response = await fetch(`${API_BASE}/auth/me`, {
             method: 'GET',
+            credentials: 'include',
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
 
-        const data = await response.json();
+        let data = {};
+        try {
+            data = await response.json();
+        } catch {
+            data = {};
+        }
+
+        if (response.status === 401) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+            localStorage.removeItem('role');
+            return null;
+        }
 
         if (!response.ok) {
-            throw new Error(data.message || data.error || 'Failed to get user');
+            throw new Error(data.message || data.error || `Failed to get user (HTTP ${response.status})`);
         }
 
         return data;
@@ -256,7 +282,16 @@ function getUserRole() {
  */
 function getUser() {
     const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    if (!userStr) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(userStr);
+    } catch {
+        localStorage.removeItem('user');
+        return null;
+    }
 }
 
 /**
@@ -277,14 +312,27 @@ function redirectByRole() {
 
     console.log('redirectByRole called on', path, 'with role:', role);
 
-    if (role === 'admin' && !path.endsWith('/dashboard.html')) {
-        window.location.href = '/dashboard.html';
-    } else if (role === 'tutor' && !path.endsWith('/dashboard.html')) {
-        window.location.href = '/dashboard.html';
-    } else if (role === 'student' && !path.endsWith('/materials.html')) {
-        window.location.href = '/materials.html';
-    } else if (!path.endsWith('/login.html') && !path.endsWith('/pages/login.html')) {
-        window.location.href = '/pages/login.html';
+    const onLogin = endsWithAny(path, ['/login.html', '/pages/login.html']);
+    const onSignup = endsWithAny(path, ['/signup.html', '/pages/signup.html']);
+    const onDashboard = endsWithAny(path, ['/dashboard.html', '/pages/dashboard.html']);
+    const onMaterials = endsWithAny(path, ['/materials.html', '/pages/materials.html']);
+
+    if (role === 'admin' || role === 'tutor') {
+        if (!onDashboard) {
+            window.location.href = ROUTES.dashboard;
+        }
+        return;
+    }
+
+    if (role === 'student') {
+        if (!onMaterials) {
+            window.location.href = ROUTES.materials;
+        }
+        return;
+    }
+
+    if (!onLogin && !onSignup && (onDashboard || onMaterials)) {
+        window.location.href = ROUTES.login;
     }
 }
 
