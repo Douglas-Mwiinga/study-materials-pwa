@@ -4,12 +4,12 @@ const require = createRequire(import.meta.url);
 const express = require('express');
 const cors = require('cors');
 
-const authRoutes = require('../backend/routes/auth');
-const materialsRoutes = require('../backend/routes/materials');
-const feedbackRoutes = require('../backend/routes/feedback');
-const studentAccessRoutes = require('../backend/routes/student-access');
-const tutorApprovalsRoutes = require('../backend/routes/tutor-approvals');
-const adminRoutes = require('../backend/routes/admin');
+const authRoutes = require('../../backend/routes/auth');
+const materialsRoutes = require('../../backend/routes/materials');
+const feedbackRoutes = require('../../backend/routes/feedback');
+const studentAccessRoutes = require('../../backend/routes/student-access');
+const tutorApprovalsRoutes = require('../../backend/routes/tutor-approvals');
+const adminRoutes = require('../../backend/routes/admin');
 
 let app;
 
