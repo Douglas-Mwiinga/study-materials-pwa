@@ -1,12 +1,21 @@
-// Robust API_URL resolver for all environments
-let API_URL = '';
-if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
-    API_URL = import.meta.env.VITE_API_URL;
-} else if (typeof window !== 'undefined' && window.API_URL) {
-    API_URL = window.API_URL;
-}
-if (!API_URL) {
-    console.warn('API_URL is not set! Please configure VITE_API_URL in your environment variables.');
+// Robust API base resolver for all environments
+const configuredApiUrl =
+    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL)
+        ? import.meta.env.VITE_API_URL
+        : (typeof window !== 'undefined' && window.API_URL ? window.API_URL : '');
+
+const API_BASE = (() => {
+    const baseUrl = (configuredApiUrl || '').replace(/\/+$/, '');
+
+    if (!baseUrl) {
+        return '/api';
+    }
+
+    return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
+})();
+
+if (!configuredApiUrl) {
+    console.info('Using default API base URL:', API_BASE);
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024; // 500MB per file
@@ -47,7 +56,7 @@ async function getMaterials(course = null, search = null) {
             throw new Error('Authentication required');
         }
 
-            let url = `${API_URL}/api/materials`;
+            let url = `${API_BASE}/materials`;
         const params = new URLSearchParams();
         
         if (course) params.append('course', course);
@@ -111,7 +120,7 @@ async function uploadMaterial(formData) {
         }
 
         console.log('✓ Auth token found, uploading material...');
-            const response = await fetch(`${API_URL}/api/materials`, {
+            const response = await fetch(`${API_BASE}/materials`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -145,7 +154,7 @@ async function getMaterial(materialId) {
             throw new Error('Authentication required');
         }
 
-            const response = await fetch(`${API_URL}/api/materials/${materialId}`, {
+            const response = await fetch(`${API_BASE}/materials/${materialId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -177,7 +186,7 @@ async function downloadMaterial(materialId) {
         const token = getAuthToken();
         
         // Increment download count
-            const response = await fetch(`${API_URL}/api/materials/${materialId}/download`, {
+            const response = await fetch(`${API_BASE}/materials/${materialId}/download`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -209,7 +218,7 @@ async function checkStudentAccess() {
             return { hasAccess: false, message: 'Not authenticated' };
         }
 
-            const response = await fetch(`${API_URL}/api/student-access/check-access`, {
+            const response = await fetch(`${API_BASE}/student-access/check-access`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,

@@ -1,13 +1,22 @@
 // Feedback API Utility
-// Robust API_URL resolver for all environments
-let API_URL = '';
-if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
-    API_URL = import.meta.env.VITE_API_URL;
-} else if (typeof window !== 'undefined' && window.API_URL) {
-    API_URL = window.API_URL;
-}
-if (!API_URL) {
-    console.warn('API_URL is not set! Please configure VITE_API_URL in your environment variables.');
+// Robust API base resolver for all environments
+const configuredApiUrl =
+    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL)
+        ? import.meta.env.VITE_API_URL
+        : (typeof window !== 'undefined' && window.API_URL ? window.API_URL : '');
+
+const API_BASE = (() => {
+    const baseUrl = (configuredApiUrl || '').replace(/\/+$/, '');
+
+    if (!baseUrl) {
+        return '/api';
+    }
+
+    return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
+})();
+
+if (!configuredApiUrl) {
+    console.info('Using default API base URL:', API_BASE);
 }
 
 /**
@@ -31,7 +40,7 @@ async function submitFeedback(materialId, rating, comment = null) {
             throw new Error('Authentication required');
         }
 
-        const response = await fetch(`${API_URL}/api/feedback`, {
+        const response = await fetch(`${API_BASE}/feedback`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -64,7 +73,7 @@ async function submitFeedback(materialId, rating, comment = null) {
  */
 async function getMaterialFeedback(materialId) {
     try {
-        const response = await fetch(`${window.API_URL}/api/feedback/material/${materialId}`, {
+        const response = await fetch(`${API_BASE}/feedback/material/${materialId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -91,7 +100,7 @@ async function getMaterialFeedback(materialId) {
  */
 async function getFeedbackStats(materialId) {
     try {
-        const response = await fetch(`${window.API_URL}/api/feedback/stats/${materialId}`, {
+        const response = await fetch(`${API_BASE}/feedback/stats/${materialId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -123,7 +132,7 @@ async function getTutorFeedback(tutorId) {
             throw new Error('Authentication required');
         }
 
-        const response = await fetch(`${window.API_URL}/api/feedback/tutor/${tutorId}`, {
+        const response = await fetch(`${API_BASE}/feedback/tutor/${tutorId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
