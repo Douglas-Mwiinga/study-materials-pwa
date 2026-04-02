@@ -310,27 +310,26 @@ function redirectByRole() {
     const role = getUserRole();
     const path = window.location.pathname;
 
-    console.log('redirectByRole called on', path, 'with role:', role);
-
     const onLogin = endsWithAny(path, ['/login.html', '/pages/login.html']);
     const onSignup = endsWithAny(path, ['/signup.html', '/pages/signup.html']);
     const onDashboard = endsWithAny(path, ['/dashboard.html', '/pages/dashboard.html']);
     const onMaterials = endsWithAny(path, ['/materials.html', '/pages/materials.html']);
 
+    // Allow admin/tutor on both dashboard and materials
     if (role === 'admin' || role === 'tutor') {
-        if (!onDashboard) {
+        if (!(onDashboard || onMaterials)) {
             window.location.href = ROUTES.dashboard;
         }
         return;
     }
 
+    // Students stay on materials
     if (role === 'student') {
-        if (!onMaterials) {
-            window.location.href = ROUTES.materials;
-        }
+        if (!onMaterials) window.location.href = ROUTES.materials;
         return;
     }
 
+    // Unauthenticated users: only block protected pages
     if (!onLogin && !onSignup && (onDashboard || onMaterials)) {
         window.location.href = ROUTES.login;
     }
