@@ -104,23 +104,21 @@ async function login(email, password) {
     try {
         const response = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ email, password })
         });
 
-        let data = null;
-        try {
-            data = await response.json();
-        } catch {
-            // If response is empty or not JSON, set data to empty object
-            data = {};
-        }
+        const raw = await response.text();
+        let data = {};
+        try { data = raw ? JSON.parse(raw) : {}; } catch { data = { message: raw }; }
 
         if (!response.ok) {
-            throw new Error(data.message || data.error || `Login failed (HTTP ${response.status})`);
+            throw new Error(
+                data.message ||
+                data.error ||
+                `Login failed (HTTP ${response.status})`
+            );
         }
 
         // Store authentication data
