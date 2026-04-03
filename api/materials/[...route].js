@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
+
 const express = require('express');
 const cors = require('cors');
 const materialsRoutes = require('../../backend/routes/materials');
@@ -12,7 +13,16 @@ function getApp() {
   app.use(cors({ origin: true, credentials: true }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  app.use((req, res, next) => {
+    res.setHeader('x-route-handler', 'materials');
+    next();
+  });
+
+  app.use('/api/materials', materialsRoutes);
+  app.use('/materials', materialsRoutes);
   app.use('/', materialsRoutes);
+
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
   return app;
 }

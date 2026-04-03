@@ -3,7 +3,7 @@ const require = createRequire(import.meta.url);
 
 const express = require('express');
 const cors = require('cors');
-const authRoutes = require('../backend/routes/auth');
+const tutorApprovalsRoutes = require('../../backend/routes/tutor-approvals');
 
 let app;
 
@@ -15,13 +15,14 @@ function getApp() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Force this function to execute auth router's /login handler
-  app.use((req, _res, next) => {
-    req.url = '/login';
+  app.use((req, res, next) => {
+    res.setHeader('x-route-handler', 'tutor-approvals');
     next();
   });
 
-  app.use('/', authRoutes);
+  app.use('/api/tutor-approvals', tutorApprovalsRoutes);
+  app.use('/tutor-approvals', tutorApprovalsRoutes);
+  app.use('/', tutorApprovalsRoutes);
 
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
   return app;
