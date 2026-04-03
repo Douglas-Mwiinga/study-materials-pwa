@@ -2,6 +2,10 @@
   "version": 2,
   "outputDirectory": "frontend",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
+    { "source": "/api/materials/(.*)", "destination": "/api/materials?route=$1" },
+    { "source": "/api/feedback/(.*)", "destination": "/api/feedback?route=$1" },
+    { "source": "/api/admin/(.*)", "destination": "/api/admin?route=$1" },
+    { "source": "/api/student-access/(.*)", "destination": "/api/student-access?route=$1" },
+    { "source": "/api/tutor-approvals/(.*)", "destination": "/api/tutor-approvals?route=$1" }
   ]
 }
