@@ -1,25 +1,17 @@
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-const studentAccessRoutes = require('../../backend/routes/student-access');
+﻿const studentAccessRoutes = require('../../backend/routes/student-access');
 
 function toSubPath(req, base) {
-  const pathname = new URL(req.url || '/', 'http://localhost').pathname;
+  const pathname = new URL(req.url, 'http://localhost').pathname;
   const parts = pathname.split('/').filter(Boolean);
-
   if (parts[0] === 'api') parts.shift();
   if (parts[0] === base) parts.shift();
-
-  return parts.length > 0 ? `/${parts.join('/')}` : '/';
+  return '/' + parts.join('/');
 }
 
-export default async function handler(req, res) {
-  req.url = toSubPath(req, 'student-access');
-
+module.exports = async function handler(req, res) {
+  req.url = toSubPath(req, 'student-access') || '/';
   return studentAccessRoutes(req, res, (err) => {
-    if (err) {
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-
+    if (err) return res.status(500).json({ error: 'Internal server error' });
     return res.status(404).json({ error: 'Not found' });
   });
-}
+};
