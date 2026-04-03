@@ -52,30 +52,32 @@ async function readJsonSafely(response) {
  * @param {string} tutorId - Tutor ID
  * @returns {Promise<Object>} Materials list
  */
-async function getTutorMaterials(tutorId) {
+export async function getTutorMaterials(tutorId) {
     try {
-        const token = getAuthToken();
-        if (!token) {
-            throw new Error('Authentication required');
-        }
-
         const response = await fetch(`${API_BASE}/materials/tutor/${tutorId}`, {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            }
+            credentials: 'include'
         });
 
-        const data = await readJsonSafely(response);
+        const raw = await response.text();
+        let data = {};
+        try { data = raw ? JSON.parse(raw) : {}; } catch { data = { message: raw }; }
 
         if (!response.ok) {
-            throw new Error(data.message || data.error || `Failed to fetch materials (HTTP ${response.status})`);
+            throw new Error(
+                data.message ||
+                data.error ||
+                `Get tutor materials failed (HTTP ${response.status})`
+            );
         }
 
         return data;
     } catch (error) {
-        console.error('Get tutor materials error:', error);
+        console.error('Get tutor materials error:', {
+            message: error?.message,
+            stack: error?.stack,
+            tutorId
+        });
         throw error;
     }
 }
