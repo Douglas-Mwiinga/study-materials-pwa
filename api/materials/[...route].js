@@ -1,32 +1,30 @@
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-
-const express = require('express');
-const cors = require('cors');
 const materialsRoutes = require('../../backend/routes/materials');
 
-let app;
+function getRouteParts(req, base) {
+  const queryRoute = req.query?.route;
+  if (Array.isArray(queryRoute)) return queryRoute;
+  if (typeof queryRoute === 'string') return [queryRoute];
 
-function getApp() {
-  if (app) return app;
-  app = express();
-  app.use(cors({ origin: true, credentials: true }));
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  const pathname = new URL(req.url || '/', 'http://localhost').pathname;
+  const parts = pathname.split('/').filter(Boolean);
 
-  app.use((req, res, next) => {
-    res.setHeader('x-route-handler', 'materials');
-    next();
-  });
+  if (parts[0] === 'api') parts.shift();
+  if (parts[0] === base) parts.shift();
 
-  app.use('/api/materials', materialsRoutes);
-  app.use('/materials', materialsRoutes);
-  app.use('/', materialsRoutes);
-
-  app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
-  return app;
+  return parts;
 }
 
 export default async function handler(req, res) {
-  return getApp()(req, res);
+  const parts = getRouteParts(req, 'materials');
+  req.url = parts.length > 0 ? `/${parts.join('/')}` : '/';
+
+  return materialsRoutes(req, res, (err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    return res.status(404).json({ error: 'Not found' });
+  });
 }
