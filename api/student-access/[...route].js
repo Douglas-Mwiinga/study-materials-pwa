@@ -3,7 +3,7 @@ const require = createRequire(import.meta.url);
 
 const express = require('express');
 const cors = require('cors');
-const feedbackRoutes = require('../../../backend/routes/feedback');
+const studentAccessRoutes = require('../../backend/routes/student-access');
 
 let app;
 
@@ -18,12 +18,12 @@ function getApp() {
   app.use((req, _res, next) => {
     const url = req.url || '/';
     req.url = url
-      .replace(/^\/api\/feedback(?=\/|$)/, '')
-      .replace(/^\/feedback(?=\/|$)/, '') || '/';
+      .replace(/^\/api\/student-access(?=\/|$)/, '')
+      .replace(/^\/student-access(?=\/|$)/, '') || '/';
     next();
   });
 
-  app.use('/', feedbackRoutes);
+  app.use('/', studentAccessRoutes);
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
   return app;

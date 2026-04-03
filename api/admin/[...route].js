@@ -3,7 +3,7 @@ const require = createRequire(import.meta.url);
 
 const express = require('express');
 const cors = require('cors');
-const studentAccessRoutes = require('../../../backend/routes/student-access');
+const adminRoutes = require('../../backend/routes/admin');
 
 let app;
 
@@ -18,12 +18,12 @@ function getApp() {
   app.use((req, _res, next) => {
     const url = req.url || '/';
     req.url = url
-      .replace(/^\/api\/student-access(?=\/|$)/, '')
-      .replace(/^\/student-access(?=\/|$)/, '') || '/';
+      .replace(/^\/api\/admin(?=\/|$)/, '')
+      .replace(/^\/admin(?=\/|$)/, '') || '/';
     next();
   });
 
-  app.use('/', studentAccessRoutes);
+  app.use('/', adminRoutes);
   app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
   return app;

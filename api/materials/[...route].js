@@ -3,7 +3,7 @@ const require = createRequire(import.meta.url);
 
 const express = require('express');
 const cors = require('cors');
-const materialsRoutes = require('../../../backend/routes/materials');
+const materialsRoutes = require('../../backend/routes/materials');
 
 let app;
 
