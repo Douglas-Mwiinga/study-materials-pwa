@@ -24,12 +24,17 @@
     </header>
 
     <script>
+    const FEEDBACK_API_URL = (() => {
+        const raw = (window.API_URL || '').replace(/\/+$/, '');
+        if (!raw) return '/api';
+        return raw.endsWith('/api') ? raw : `${raw}/api`;
+    })();
+
     // Define submitFeedback function
     async function submitFeedback(materialId, rating, comment) {
         const token = localStorage.getItem('authToken');
-        const baseUrl = window.API_URL || 'http://localhost:3001';
 
-        const res = await fetch(`${baseUrl}/api/feedback`, {
+        const res = await fetch(`${FEEDBACK_API_URL}/feedback`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -166,9 +171,8 @@
             }
 
             const token = localStorage.getItem('authToken');
-            const baseUrl = window.API_URL || 'http://localhost:3001';
 
-            const res = await fetch(`${baseUrl}/api/materials`, {
+            const res = await fetch(`${FEEDBACK_API_URL}/materials`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
