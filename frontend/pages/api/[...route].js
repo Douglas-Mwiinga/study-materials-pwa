@@ -3,7 +3,7 @@ const require = createRequire(import.meta.url);
 
 const express = require('express');
 const cors = require('cors');
-const authRoutes = require('../../../../backend/routes/auth');
+const authRoutes = require('../../../backend/routes/auth');
 
 let app;
 
