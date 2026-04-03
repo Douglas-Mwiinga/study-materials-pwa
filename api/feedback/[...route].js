@@ -1,4 +1,7 @@
-﻿const feedbackRoutes = require('../../backend/routes/feedback');
+﻿import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const feedbackRoutes = require('../../backend/routes/feedback');
 
 function toSubPath(req, base) {
   const pathname = new URL(req.url, 'http://localhost').pathname;
@@ -8,10 +11,10 @@ function toSubPath(req, base) {
   return '/' + parts.join('/');
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   req.url = toSubPath(req, 'feedback') || '/';
   return feedbackRoutes(req, res, (err) => {
     if (err) return res.status(500).json({ error: 'Internal server error' });
     return res.status(404).json({ error: 'Not found' });
   });
-};
+}
