@@ -143,7 +143,7 @@
         (function () {
             if (typeof window.uploadMaterial === 'function') return;
 
-            const API_URL_FALLBACK = window.API_URL || 'http://localhost:3001';
+            const API_BASE_URL_FALLBACK = '/api';
 
             function getAuthTokenFallback() {
                 return localStorage.getItem('authToken');
@@ -156,11 +156,10 @@
                         throw new Error('Authentication required');
                     }
 
-                    const response = await fetch(`${API_URL_FALLBACK}/api/materials`, {
+                    const response = await fetch(`${API_BASE_URL_FALLBACK}/materials`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${token}`
-                            // Don't set Content-Type - browser will set it with boundary for FormData
                         },
                         body: formData
                     });
@@ -561,7 +560,6 @@
         // Handle material deletion
         async function handleDeleteMaterial(materialId) {
             try {
-                // Try to get token from localStorage or fallback to getAuthToken()
                 let token = localStorage.getItem('authToken');
                 if (!token && typeof getAuthToken === 'function') {
                     token = getAuthToken();
@@ -571,10 +569,10 @@
                     return;
                 }
 
-                const API_URL = window.API_URL || 'http://localhost:3001';
-                
+                const API_BASE_URL = '/api';
+
                 console.log('Deleting material:', materialId);
-                const response = await fetch(`${API_URL}/api/materials/${materialId}`, {
+                const response = await fetch(`${API_BASE_URL}/materials/${materialId}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -615,8 +613,8 @@
                     return false;
                 }
 
-                const API_URL = window.API_URL || 'http://localhost:3001';
-                const response = await fetch(`${API_URL}/api/student-access/status`, {
+                const API_BASE_URL = '/api';
+                const response = await fetch(`${API_BASE_URL}/student-access/status`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
