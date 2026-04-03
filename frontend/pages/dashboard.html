@@ -1071,7 +1071,7 @@
             const notes = prompt('Add approval notes (optional):');
             
             try {
-                const token = localStorage.getItem('authToken');
+                const token = getAuthToken();
                 const response = await fetch(`${DASHBOARD_API_URL}/admin/tutors/approve/${tutorId}`, {
                     method: 'POST',
                     headers: {
@@ -1101,7 +1101,7 @@
             }
             
             try {
-                const token = localStorage.getItem('authToken');
+                const token = getAuthToken();
                 const response = await fetch(`${DASHBOARD_API_URL}/admin/tutors/reject/${tutorId}`, {
                     method: 'POST',
                     headers: {
@@ -1292,7 +1292,7 @@
 
         // Load pending students
         async function loadPendingStudents() {
-            const token = localStorage.getItem('authToken');
+            const token = getAuthToken();
             if (!token) return;
 
             try {
@@ -1358,7 +1358,7 @@
 
         // Handle approval/rejection
         async function handleApproval(action, approvalId) {
-            const token = localStorage.getItem('authToken');
+            const token = getAuthToken();
             if (!token) return;
 
             try {
@@ -1387,7 +1387,7 @@
 
         // Load approved students
         async function loadApprovedStudents() {
-            const token = localStorage.getItem('authToken');
+            const token = getAuthToken();
             if (!token) return;
 
             try {
@@ -1457,7 +1457,7 @@
 
         // Revoke student access
         async function revokeAccess(approvalId) {
-            const token = localStorage.getItem('authToken');
+            const token = getAuthToken();
             if (!token) return;
 
             try {
@@ -1491,7 +1491,7 @@
         }
 
         async function loadTutorSettings() {
-            const token = localStorage.getItem('authToken');
+            const token = getAuthToken();
             if (!token) return;
 
             try {
@@ -1540,7 +1540,7 @@
         document.getElementById('expiryPreset')?.addEventListener('change', showOrHideCustomExpiry);
 
         document.getElementById('saveSettingsBtn')?.addEventListener('click', async () => {
-            const token = localStorage.getItem('authToken');
+            const token = getAuthToken();
             if (!token) return;
 
             const preset = document.getElementById('expiryPreset').value;
