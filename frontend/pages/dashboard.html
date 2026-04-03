@@ -198,7 +198,7 @@
                         }
 
                         try {
-                            const token = localStorage.getItem('authToken');
+                            const token = getAuthToken();
                             if (!token) return;
 
                             const baseUrl = resolveApiBase();
@@ -288,7 +288,7 @@
 
                     async function loadTutorStatusModal() {
                         try {
-                            const token = localStorage.getItem('authToken');
+                            const token = getAuthToken();
                             if (!token) return;
 
                             const baseUrl = resolveApiBase();
@@ -899,7 +899,7 @@
         }
 
         async function loadAdminData() {
-            const token = localStorage.getItem('authToken');
+            const token = getAuthToken();
             const debugLine = document.getElementById('adminDebugLine');
             
             try {
