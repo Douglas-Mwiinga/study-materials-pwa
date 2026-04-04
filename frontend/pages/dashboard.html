@@ -1059,18 +1059,23 @@
                             </span>
                         </div>
                     </div>
-                    <div class="admin-tutor-actions">
-                        <button class="admin-btn ${isPaused ? 'admin-btn-approve tutor-unpause-btn' : 'admin-btn-reject tutor-pause-btn'}" data-id="${tutor.id}">
-                            ${isPaused ? '▶ Unpause' : '⏸ Pause'}
+                    <div class="admin-tutor-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button class="admin-btn admin-btn-reject tutor-pause-btn" data-id="${tutor.id}"
+                            ${isPaused ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
+                            ⏸ Pause
+                        </button>
+                        <button class="admin-btn admin-btn-approve tutor-unpause-btn" data-id="${tutor.id}"
+                            ${!isPaused ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
+                            ▶ Unpause
                         </button>
                     </div>
                 </div>`;
             }).join('');
 
-            container.querySelectorAll('.tutor-pause-btn').forEach(btn => {
+            container.querySelectorAll('.tutor-pause-btn:not([disabled])').forEach(btn => {
                 btn.addEventListener('click', () => toggleTutorPause(btn.dataset.id, 'pause'));
             });
-            container.querySelectorAll('.tutor-unpause-btn').forEach(btn => {
+            container.querySelectorAll('.tutor-unpause-btn:not([disabled])').forEach(btn => {
                 btn.addEventListener('click', () => toggleTutorPause(btn.dataset.id, 'unpause'));
             });
         }

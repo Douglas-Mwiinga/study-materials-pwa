@@ -118,9 +118,9 @@ router.get('/tutors/approved', requireAdmin, async (req, res) => {
     try {
         const { data, error } = await supabaseAdmin
             .from('profiles')
-            .select('id, email, name, tutorial_group, created_at, tutor_approved_at, tutor_status_notes')
+            .select('id, email, name, tutorial_group, created_at, tutor_approved_at, tutor_status_notes, tutor_status')
             .eq('role', 'tutor')
-            .eq('tutor_status', 'approved')
+            .in('tutor_status', ['approved', 'paused'])
             .order('tutor_approved_at', { ascending: false });
 
         if (error) throw error;
