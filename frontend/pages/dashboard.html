@@ -189,6 +189,10 @@
                         return raw.endsWith('/api') ? raw : `${raw}/api`;
                     }
 
+                    // Define globally so all functions on this page can access it
+                    window.DASHBOARD_API_URL = resolveApiBase();
+                    var DASHBOARD_API_URL = window.DASHBOARD_API_URL;
+
                     // Load and display user info and account status
                     (async function() {
                         function normalizeRoles(user) {
@@ -206,7 +210,7 @@
                             const token = getAuthToken();
                             if (!token) return;
 
-                            const baseUrl = DASHBOARD_API_URL;
+                            const baseUrl = resolveApiBase();
                             const response = await fetch(`${baseUrl}/auth/me`, {
                                 headers: { 'Authorization': `Bearer ${token}` }
                             });
@@ -296,7 +300,7 @@
                             const token = getAuthToken();
                             if (!token) return;
 
-                            const baseUrl = DASHBOARD_API_URL;
+                            const baseUrl = resolveApiBase();
                             const response = await fetch(`${baseUrl}/auth/me`, {
                                 headers: { 'Authorization': `Bearer ${token}` }
                             });
@@ -591,16 +595,11 @@
     <script type="module" src="../js/feedback.js"></script>
     <script type="module" src="../js/dashboard.js"></script>
     <script>
-        // Local fallback until auth.js loads
-        function getAuthToken() {
-            return localStorage.getItem('authToken') || localStorage.getItem('token') || null;
-        }
-
-        function resolveApiBase() {
+        const DASHBOARD_API_URL = (() => {
             const raw = (window.API_URL || '').replace(/\/+$/, '');
             if (!raw) return '/api';
             return raw.endsWith('/api') ? raw : `${raw}/api`;
-        }
+        })();
 
         function getStoredToken() {
             return localStorage.getItem('authToken') || localStorage.getItem('token') || '';
