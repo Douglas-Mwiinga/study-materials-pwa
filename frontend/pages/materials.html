@@ -463,21 +463,22 @@
                     
                     // Add download button handlers
                     materialsList.querySelectorAll('.download-btn').forEach(btn => {
-                        btn.addEventListener('click', async () => {
+                        btn.addEventListener('click', () => {
                             const materialId = btn.dataset.materialId;
                             const fileUrl = btn.dataset.fileUrl;
-                            
-                            try {
-                                // Increment download count
-                                await downloadMaterial(materialId);
-                                
-                                // Open download link
-                                window.open(fileUrl, '_blank');
-                            } catch (error) {
-                                console.error('Download error:', error);
-                                // Still try to download even if count update fails
-                                window.open(fileUrl, '_blank');
-                            }
+                            if (!fileUrl) return;
+
+                            // Open file immediately (must be synchronous to avoid mobile popup blockers)
+                            const a = document.createElement('a');
+                            a.href = fileUrl;
+                            a.target = '_blank';
+                            a.rel = 'noopener noreferrer';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+
+                            // Increment download count in the background (non-blocking)
+                            downloadMaterial(materialId).catch(err => console.warn('Count update failed:', err));
                         });
                     });
                 } catch (error) {
