@@ -10,7 +10,7 @@ const { getUserIdFromToken } = require('../utils/authHelpers');
 async function getUserProfile(userId) {
     const { data, error } = await supabaseAdmin
         .from('profiles')
-        .select('id, email, role')
+        .select('id, email, role, tutorial_group')
         .eq('id', userId)
         .single();
     
@@ -200,11 +200,23 @@ router.get('/tutor/:tutorId', async (req, res) => {
     try {
         const { tutorId } = req.params;
 
-        // Get all materials by this tutor
-        const { data: materials, error: materialsError } = await supabaseAdmin
+        // Get tutor's tutorial_group
+        const { data: tutorProfile, error: tutorProfileError } = await getUserProfile(tutorId);
+        if (tutorProfileError || !tutorProfile) {
+            return res.status(404).json({ error: 'Tutor not found' });
+        }
+
+        // Get materials by this tutor, scoped to their tutorial_group
+        let materialsQuery = supabaseAdmin
             .from('materials')
             .select('id')
             .eq('tutor_id', tutorId);
+
+        if (tutorProfile.tutorial_group) {
+            materialsQuery = materialsQuery.eq('tutorial_group', tutorProfile.tutorial_group);
+        }
+
+        const { data: materials, error: materialsError } = await materialsQuery;
 
         if (materialsError) {
             return res.status(500).json({
@@ -214,17 +226,21 @@ router.get('/tutor/:tutorId', async (req, res) => {
         }
 
         if (!materials || materials.length === 0) {
-            return res.json({
-                success: true,
-                feedback: [],
-                count: 0
-            });
+            return res.json({ success: true, feedback: [], count: 0 });
         }
 
         const materialIds = materials.map(m => m.id);
 
-        // Get all feedback for these materials
-        const { data: feedback, error: feedbackError } = await supabaseAdmin
+        // Get feedback only from students approved in the tutor's tutorial_group
+        const { data: approvedStudents } = await supabaseAdmin
+            .from('student_approvals')
+            .select('student_id')
+            .eq('tutorial_group_name', tutorProfile.tutorial_group || '')
+            .eq('status', 'approved');
+
+        const approvedStudentIds = (approvedStudents || []).map(a => a.student_id);
+
+        let feedbackQuery = supabaseAdmin
             .from('feedback')
             .select(`
                 id,
@@ -237,6 +253,16 @@ router.get('/tutor/:tutorId', async (req, res) => {
             `)
             .in('material_id', materialIds)
             .order('created_at', { ascending: false });
+
+        // If we have approved students, filter to only their feedback
+        if (approvedStudentIds.length > 0) {
+            feedbackQuery = feedbackQuery.in('student_id', approvedStudentIds);
+        } else {
+            // No approved students in this group — return empty
+            return res.json({ success: true, feedback: [], count: 0 });
+        }
+
+        const { data: feedback, error: feedbackError } = await feedbackQuery;
 
         if (feedbackError) {
             return res.status(500).json({
