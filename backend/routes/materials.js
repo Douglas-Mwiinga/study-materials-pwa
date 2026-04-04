@@ -211,13 +211,17 @@ router.get('/', async (req, res) => {
 
         if (latestApproval.access_expires_at) {
             const expiresAt = new Date(latestApproval.access_expires_at);
-            // You may want to check if access has expired here, e.g.:
             if (expiresAt < new Date()) {
                 return res.status(403).json({
                     error: 'Access expired',
                     message: 'Your approval access has expired.'
                 });
             }
+        }
+
+        // Restrict to only materials belonging to the student's approved tutorial group
+        if (latestApproval.tutorial_group_name) {
+            query = query.eq('tutorial_group', latestApproval.tutorial_group_name);
         }
         // End of student approval check
         }
