@@ -256,6 +256,127 @@ router.get('/', async (req, res) => {
 });
 
 // =============================================
+// POST /api/materials/upload-url
+// Generate a Supabase signed upload URL (bypasses Vercel 4.5MB body limit)
+// =============================================
+router.post('/upload-url', async (req, res) => {
+    try {
+        const userId = await getUserIdFromToken(req.headers.authorization);
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const { data: profile, error: profileError } = await getUserProfile(userId);
+        if (profileError || !profile) return res.status(404).json({ error: 'Profile not found' });
+
+        const authUser = { role: profile?.role, roles: profile?.roles || [] };
+        if (!canUploadMaterials(authUser)) {
+            return res.status(403).json({ error: 'Only tutors or admins can upload materials' });
+        }
+
+        const roles = normalizeRoles(authUser);
+        if (roles.includes('tutor') && !roles.includes('admin')) {
+            if (profile?.tutor_status && profile.tutor_status !== 'approved') {
+                return res.status(403).json({ error: 'Tutor account is not approved yet' });
+            }
+        }
+
+        if (!profile.tutorial_group) {
+            return res.status(400).json({
+                error: 'No tutorial group assigned',
+                message: 'You must be assigned to a tutorial group before uploading materials.'
+            });
+        }
+
+        const { fileName, fileType } = req.body;
+        if (!fileName || !fileType) {
+            return res.status(400).json({ error: 'fileName and fileType are required' });
+        }
+
+        const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const storagePath = `materials/${userId}/${Date.now()}-${safeName}`;
+
+        const { data, error } = await supabaseAdmin
+            .storage
+            .from('materials')
+            .createSignedUploadUrl(storagePath);
+
+        if (error) {
+            return res.status(500).json({ error: 'Failed to create upload URL', message: error.message });
+        }
+
+        res.json({
+            success: true,
+            signedUrl: data.signedUrl,
+            storagePath,
+            tutorialGroup: profile.tutorial_group
+        });
+
+    } catch (err) {
+        console.error('upload-url error:', err);
+        res.status(500).json({ error: 'Internal server error', message: err.message });
+    }
+});
+
+// =============================================
+// POST /api/materials/complete
+// Save material DB record after direct-to-storage upload
+// =============================================
+router.post('/complete', async (req, res) => {
+    try {
+        const userId = await getUserIdFromToken(req.headers.authorization);
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const { data: profile, error: profileError } = await getUserProfile(userId);
+        if (profileError || !profile) return res.status(404).json({ error: 'Profile not found' });
+
+        const authUser = { role: profile?.role, roles: profile?.roles || [] };
+        if (!canUploadMaterials(authUser)) {
+            return res.status(403).json({ error: 'Only tutors or admins can upload materials' });
+        }
+
+        const { course, title, description, storagePath, fileName, fileSize, fileType } = req.body;
+        if (!course || !title || !storagePath || !fileName || !fileType) {
+            return res.status(400).json({ error: 'Missing required fields', message: 'course, title, storagePath, fileName, fileType are required' });
+        }
+
+        // Get public URL for the uploaded file
+        const { data: { publicUrl } } = supabaseAdmin
+            .storage
+            .from('materials')
+            .getPublicUrl(storagePath);
+
+        const { data: material, error: dbError } = await supabaseAdmin
+            .from('materials')
+            .insert({
+                tutor_id: userId,
+                course,
+                title,
+                description: description || null,
+                file_name: fileName,
+                file_url: publicUrl,
+                file_size: fileSize || 0,
+                file_type: fileType,
+                tutorial_group: profile.tutorial_group,
+                downloads_count: 0,
+                provider: 'supabase',
+                s3_key: null
+            })
+            .select()
+            .single();
+
+        if (dbError) {
+            await supabaseAdmin.storage.from('materials').remove([storagePath]);
+            return res.status(500).json({ error: 'Failed to save material', message: dbError.message });
+        }
+
+        res.status(201).json({ success: true, message: 'Material uploaded successfully', material });
+
+    } catch (err) {
+        console.error('complete-upload error:', err);
+        res.status(500).json({ error: 'Internal server error', message: err.message });
+    }
+});
+
+// =============================================
 // POST /api/materials - Upload a new material
 // =============================================
 router.post('/', (req, res, next) => {

@@ -97,19 +97,11 @@ async function uploadMaterial(formData) {
     try {
         const token = getAuthToken();
         if (!token) {
-            console.error('❌ Upload failed: No authentication token found in localStorage');
-            console.log('Debug info:', {
-                authToken: localStorage.getItem('authToken'),
-                user: localStorage.getItem('user'),
-                role: (typeof window.getUserRole === 'function' && window.getUserRole()) || localStorage.getItem('role')
-            });
             throw new Error('Authentication required — please sign in first');
         }
 
         const file = formData?.get('file');
-        if (!file) {
-            throw new Error('Please select a file to upload');
-        }
+        if (!file) throw new Error('Please select a file to upload');
 
         if (!ALLOWED_UPLOAD_MIME_TYPES.includes(file.type)) {
             throw new Error('File type not allowed. Allowed types: PDF, DOC, DOCX, XLS, XLSX, TXT, PNG, JPG, MP4, MOV, WEBM, M4V');
@@ -120,20 +112,55 @@ async function uploadMaterial(formData) {
         }
 
         console.log('✓ Auth token found, uploading material...');
-            const response = await fetch(`${API_BASE}/materials`, {
+
+        // Step 1: Get a presigned upload URL from the backend (small JSON request — no Vercel size limit hit)
+        const urlRes = await fetch(`${API_BASE}/materials/upload-url`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`
-                // Don't set Content-Type - browser will set it with boundary for FormData
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             },
-            body: formData
+            body: JSON.stringify({ fileName: file.name, fileType: file.type })
         });
 
-        const data = await response.json();
+        const urlData = await urlRes.json();
+        if (!urlRes.ok) throw new Error(urlData.message || urlData.error || 'Failed to get upload URL');
 
-        if (!response.ok) {
-            throw new Error(data.message || data.error || 'Failed to upload material');
+        // Step 2: Upload file directly to Supabase Storage (bypasses Vercel entirely)
+        const uploadRes = await fetch(urlData.signedUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': file.type },
+            body: file
+        });
+
+        if (!uploadRes.ok) {
+            throw new Error(`Storage upload failed: ${uploadRes.status} ${uploadRes.statusText}`);
         }
+
+        // Step 3: Save the DB record (small JSON request)
+        const course = formData.get('course');
+        const title = formData.get('title');
+        const description = formData.get('description');
+
+        const completeRes = await fetch(`${API_BASE}/materials/complete`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                course,
+                title,
+                description,
+                storagePath: urlData.storagePath,
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type
+            })
+        });
+
+        const data = await completeRes.json();
+        if (!completeRes.ok) throw new Error(data.message || data.error || 'Failed to save material');
 
         return data;
     } catch (error) {
