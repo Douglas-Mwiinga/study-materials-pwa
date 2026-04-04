@@ -34,7 +34,10 @@ export default async function handler(req, res) {
   req.url = toSubPath(req, 'materials');
 
   return materialsRoutes(req, res, (err) => {
-    if (err) return res.status(500).json({ error: 'Internal server error' });
+    if (err) {
+      console.error('[api/materials] unhandled route error:', err);
+      return res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+    }
     return res.status(404).json({ error: 'Not found' });
   });
 }

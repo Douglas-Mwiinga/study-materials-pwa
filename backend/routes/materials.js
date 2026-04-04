@@ -254,8 +254,20 @@ router.get('/', async (req, res) => {
 // =============================================
 // POST /api/materials - Upload a new material
 // =============================================
-router.post('/', upload.single('file'), async (req, res) => {
+router.post('/', (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ error: 'File too large', message: 'Maximum file size is 5GB' });
+            }
+            return res.status(400).json({ error: 'File upload error', message: err.message });
+        }
+        next();
+    });
+}, async (req, res) => {
   try {
+    console.log('[POST /api/materials] req.file:', req.file ? `${req.file.originalname} (${req.file.size} bytes)` : 'MISSING');
+    console.log('[POST /api/materials] req.body keys:', Object.keys(req.body || {}));
     // Check authentication
     const userId = await getUserIdFromToken(req.headers.authorization);
     if (!userId) {
