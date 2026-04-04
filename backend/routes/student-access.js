@@ -321,14 +321,13 @@ router.post('/approve/:approvalId', requireAuth, async (req, res) => {
         const tutorId = req.user.id;
         let { expiryDate, exactExpiryAt } = req.body; // explicit override formats: YYYY-MM-DD or ISO datetime
 
-        // Get tutor profile
-        const { data: tutorProfile, error: tutorProfileError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, role, tutorial_group, name')
-            .eq('id', tutorId)
-            .single();
-
-        if (tutorProfileError || !tutorProfile || tutorProfile.role !== 'tutor') {
+        // Use profile already fetched by requireAuth middleware
+        const tutorProfile = req.user;
+        const allRoles = [
+            ...(Array.isArray(tutorProfile.roles) ? tutorProfile.roles : []),
+            ...(tutorProfile.role ? [tutorProfile.role] : [])
+        ];
+        if (!tutorProfile || (!allRoles.includes('tutor') && !allRoles.includes('admin'))) {
             return res.status(403).json({
                 error: 'Forbidden',
                 message: 'Only tutors can approve students'
@@ -459,14 +458,13 @@ router.post('/reject/:approvalId', requireAuth, async (req, res) => {
         const tutorId = req.user.id;
         const { notes } = req.body; // Optional rejection reason
 
-        // Get tutor profile
-        const { data: tutorProfile, error: tutorProfileError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, role, tutorial_group, name')
-            .eq('id', tutorId)
-            .single();
-
-        if (tutorProfileError || !tutorProfile || tutorProfile.role !== 'tutor') {
+        // Use profile already fetched by requireAuth middleware
+        const tutorProfile = req.user;
+        const allRoles = [
+            ...(Array.isArray(tutorProfile.roles) ? tutorProfile.roles : []),
+            ...(tutorProfile.role ? [tutorProfile.role] : [])
+        ];
+        if (!tutorProfile || (!allRoles.includes('tutor') && !allRoles.includes('admin'))) {
             return res.status(403).json({
                 error: 'Forbidden',
                 message: 'Only tutors can reject students'
