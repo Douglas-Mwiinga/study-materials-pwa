@@ -357,12 +357,21 @@ router.post('/approve/:approvalId', requireAuth, async (req, res) => {
         }
 
         const isAdmin = allRoles.includes('admin');
-        if (!isAdmin && (!tutorProfile.tutorial_group || approval.tutorial_group_name !== tutorProfile.tutorial_group)) {
-            return res.status(403).json({
-                error: 'Forbidden',
-                message: 'You can only approve students in your tutorial group',
-                debug: { tutorGroup: tutorProfile.tutorial_group, approvalGroup: approval.tutorial_group_name }
-            });
+        const isTutor = allRoles.includes('tutor');
+        if (!isAdmin && !isTutor) {
+            return res.status(403).json({ error: 'Forbidden', message: 'Only tutors or admins can approve students' });
+        }
+
+        if (!isAdmin) {
+            const tutorGroup = (tutorProfile.tutorial_group || '').trim().replace(/\s+/g, ' ');
+            const approvalGroup = (approval.tutorial_group_name || '').trim().replace(/\s+/g, ' ');
+            if (!tutorGroup || tutorGroup !== approvalGroup) {
+                return res.status(403).json({
+                    error: 'Forbidden',
+                    message: 'You can only approve students in your tutorial group',
+                    debug: { tutorGroup, approvalGroup }
+                });
+            }
         }
 
         if (!isAdmin && approval.tutor_id && approval.tutor_id !== tutorId) {
@@ -495,17 +504,22 @@ router.post('/reject/:approvalId', requireAuth, async (req, res) => {
             });
         }
 
-        const rejectAllRoles = [
-            ...(Array.isArray(tutorProfile.roles) ? tutorProfile.roles : []),
-            ...(tutorProfile.role ? [tutorProfile.role] : [])
-        ];
-        const rejectIsAdmin = rejectAllRoles.includes('admin');
-        if (!rejectIsAdmin && (!tutorProfile.tutorial_group || approval.tutorial_group_name !== tutorProfile.tutorial_group)) {
-            return res.status(403).json({
-                error: 'Forbidden',
-                message: 'You can only reject students in your tutorial group',
-                debug: { tutorGroup: tutorProfile.tutorial_group, approvalGroup: approval.tutorial_group_name }
-            });
+        const rejectIsAdmin = allRoles.includes('admin');
+        const rejectIsTutor = allRoles.includes('tutor');
+        if (!rejectIsAdmin && !rejectIsTutor) {
+            return res.status(403).json({ error: 'Forbidden', message: 'Only tutors or admins can reject students' });
+        }
+
+        if (!rejectIsAdmin) {
+            const tutorGroup = (tutorProfile.tutorial_group || '').trim().replace(/\s+/g, ' ');
+            const approvalGroup = (approval.tutorial_group_name || '').trim().replace(/\s+/g, ' ');
+            if (!tutorGroup || tutorGroup !== approvalGroup) {
+                return res.status(403).json({
+                    error: 'Forbidden',
+                    message: 'You can only reject students in your tutorial group',
+                    debug: { tutorGroup, approvalGroup }
+                });
+            }
         }
 
         if (!rejectIsAdmin && approval.tutor_id && approval.tutor_id !== tutorId) {
