@@ -3,6 +3,13 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const materialsRoutes = require('../backend/routes/materials');
 
+// Disable Vercel's default body parser so multer can parse multipart/form-data
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};
+
 function toSubPath(req, base) {
   const queryRoute = req.query?.route;
 
