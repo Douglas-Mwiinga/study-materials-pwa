@@ -356,14 +356,16 @@ router.post('/approve/:approvalId', requireAuth, async (req, res) => {
             });
         }
 
-        if (!tutorProfile.tutorial_group || approval.tutorial_group_name !== tutorProfile.tutorial_group) {
+        const isAdmin = allRoles.includes('admin');
+        if (!isAdmin && (!tutorProfile.tutorial_group || approval.tutorial_group_name !== tutorProfile.tutorial_group)) {
             return res.status(403).json({
                 error: 'Forbidden',
-                message: 'You can only approve students in your tutorial group'
+                message: 'You can only approve students in your tutorial group',
+                debug: { tutorGroup: tutorProfile.tutorial_group, approvalGroup: approval.tutorial_group_name }
             });
         }
 
-        if (approval.tutor_id && approval.tutor_id !== tutorId) {
+        if (!isAdmin && approval.tutor_id && approval.tutor_id !== tutorId) {
             return res.status(403).json({
                 error: 'Forbidden',
                 message: 'This approval is already assigned to another tutor'
@@ -493,14 +495,20 @@ router.post('/reject/:approvalId', requireAuth, async (req, res) => {
             });
         }
 
-        if (!tutorProfile.tutorial_group || approval.tutorial_group_name !== tutorProfile.tutorial_group) {
+        const rejectAllRoles = [
+            ...(Array.isArray(tutorProfile.roles) ? tutorProfile.roles : []),
+            ...(tutorProfile.role ? [tutorProfile.role] : [])
+        ];
+        const rejectIsAdmin = rejectAllRoles.includes('admin');
+        if (!rejectIsAdmin && (!tutorProfile.tutorial_group || approval.tutorial_group_name !== tutorProfile.tutorial_group)) {
             return res.status(403).json({
                 error: 'Forbidden',
-                message: 'You can only reject students in your tutorial group'
+                message: 'You can only reject students in your tutorial group',
+                debug: { tutorGroup: tutorProfile.tutorial_group, approvalGroup: approval.tutorial_group_name }
             });
         }
 
-        if (approval.tutor_id && approval.tutor_id !== tutorId) {
+        if (!rejectIsAdmin && approval.tutor_id && approval.tutor_id !== tutorId) {
             return res.status(403).json({
                 error: 'Forbidden',
                 message: 'This approval is already assigned to another tutor'
