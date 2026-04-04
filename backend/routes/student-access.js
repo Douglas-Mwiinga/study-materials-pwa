@@ -262,7 +262,7 @@ router.get('/approved', requireAuth, async (req, res) => {
             .from('student_approvals')
             .select('id, student_id, status, access_expires_at, created_at, approved_at, tutorial_group_name, tutor_id')
             .eq('tutor_id', tutorId)
-            .eq('status', 'approved')
+            .in('status', ['approved', 'revoked'])
             .order('approved_at', { ascending: false });
 
         if (error) {
@@ -599,7 +599,7 @@ router.post('/revoke/:approvalId', requireAuth, async (req, res) => {
         const { data: updatedApproval, error } = await supabaseAdmin
             .from('student_approvals')
             .update({
-                status: 'rejected',
+                status: 'revoked',
                 access_expires_at: null,
                 rejected_at: new Date().toISOString()
             })
@@ -630,6 +630,73 @@ router.post('/revoke/:approvalId', requireAuth, async (req, res) => {
 
     } catch (error) {
         console.error('Revoke access error:', error);
+        res.status(500).json({
+            error: 'Internal server error',
+            message: error.message
+        });
+    }
+});
+
+// =============================================
+// POST /api/student-access/unrevoke/:approvalId
+// Restore previously revoked access
+// =============================================
+router.post('/unrevoke/:approvalId', requireAuth, async (req, res) => {
+    try {
+        const { approvalId } = req.params;
+        const tutorId = req.user.id;
+
+        const userRoles = [
+            ...(Array.isArray(req.user.roles) ? req.user.roles : []),
+            req.user.role
+        ].filter(Boolean);
+        const isAdmin = userRoles.includes('admin');
+
+        // Verify the record exists and belongs to the tutor (admins bypass)
+        const lookupQuery = supabaseAdmin
+            .from('student_approvals')
+            .select('id, status, tutorial_group_name')
+            .eq('id', approvalId)
+            .eq('status', 'revoked');
+
+        if (!isAdmin) {
+            lookupQuery.eq('tutor_id', tutorId);
+        }
+
+        const { data: existing, error: lookupError } = await lookupQuery.single();
+
+        if (lookupError || !existing) {
+            return res.status(404).json({
+                error: 'Approval not found',
+                message: 'Record does not exist, is not revoked, or does not belong to you'
+            });
+        }
+
+        const { data: updatedApproval, error } = await supabaseAdmin
+            .from('student_approvals')
+            .update({
+                status: 'approved',
+                approved_at: new Date().toISOString()
+            })
+            .eq('id', approvalId)
+            .select()
+            .single();
+
+        if (error) {
+            return res.status(500).json({
+                error: 'Failed to restore access',
+                message: error.message
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Student access restored successfully',
+            data: updatedApproval
+        });
+
+    } catch (error) {
+        console.error('Unrevoke access error:', error);
         res.status(500).json({
             error: 'Internal server error',
             message: error.message

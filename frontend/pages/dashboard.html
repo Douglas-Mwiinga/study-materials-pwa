@@ -1480,28 +1480,47 @@
                     const expiresAt = item.access_expires_at ? new Date(item.access_expires_at) : null;
                     const isExpired = expiresAt && expiresAt < new Date();
                     const expiryClass = isExpired ? 'access-expiry-expired' : 'access-expiry-active';
-                    
+                    const isRevoked = item.status === 'revoked';
+
                     return `
-                        <div class="access-card access-card-approved">
+                        <div class="access-card ${isRevoked ? 'access-card-revoked' : 'access-card-approved'}">
                             <div class="access-card-header">
                                 <strong>${item.profiles?.name || 'Student'}</strong>
                                 <small class="access-date">${new Date(item.approved_at).toLocaleDateString()}</small>
                             </div>
                             <div class="access-meta">
                                 Email: ${item.profiles?.email} <br>
-                                ${expiresAt ? `Access Expires: <span class="${expiryClass}">${expiresAt.toLocaleDateString()} ${isExpired ? '(EXPIRED)' : ''}</span>` : 'Access: No expiry set'}
+                                ${expiresAt ? `Access Expires: <span class="${expiryClass}">${expiresAt.toLocaleDateString()} ${isExpired ? '(EXPIRED)' : ''}</span>` : 'Access: No expiry set'} <br>
+                                Status: <span class="tutor-status-badge tutor-status-${isRevoked ? 'paused' : 'approved'}">${isRevoked ? '\uD83D\uDEAB Revoked' : '\u2713 Active'}</span>
                             </div>
-                            <button data-action="revoke" data-id="${item.id}" class="revoke-btn access-btn access-btn-revoke">Revoke</button>
+                            <div class="access-actions" style="margin-top:8px">
+                                <button data-id="${item.id}" class="revoke-btn access-btn access-btn-revoke"
+                                    ${isRevoked ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
+                                    \uD83D\uDEAB Revoke
+                                </button>
+                                <button data-id="${item.id}" class="unrevoke-btn access-btn access-btn-approve"
+                                    ${!isRevoked ? 'disabled style="opacity:0.4;cursor:not-allowed"' : ''}>
+                                    \u2713 Unrevoke
+                                </button>
+                            </div>
                         </div>
                     `;
                 }).join('');
 
                 // Add event listeners
-                approvedList.querySelectorAll('.revoke-btn').forEach(btn => {
+                approvedList.querySelectorAll('.revoke-btn:not([disabled])').forEach(btn => {
                     btn.addEventListener('click', async () => {
                         const confirmed = await showDashboardConfirm("Are you sure you want to revoke this student's access?");
                         if (confirmed) {
                             await revokeAccess(btn.dataset.id);
+                        }
+                    });
+                });
+                approvedList.querySelectorAll('.unrevoke-btn:not([disabled])').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const confirmed = await showDashboardConfirm("Restore this student's access?");
+                        if (confirmed) {
+                            await unrevokeAccess(btn.dataset.id);
                         }
                     });
                 });
@@ -1535,6 +1554,34 @@
             } catch (error) {
                 console.error('Revoke error:', error);
                 showDashboardToast('Error revoking access', 'error');
+            }
+        }
+
+        // Unrevoke student access
+        async function unrevokeAccess(approvalId) {
+            const token = getAuthToken();
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${DASHBOARD_API_URL}/student-access/unrevoke/${approvalId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                if (response.ok) {
+                    showDashboardToast('Student access restored successfully', 'success');
+                    loadApprovedStudents();
+                } else {
+                    const result = await response.json().catch(() => ({}));
+                    showDashboardToast(result.message || 'Failed to restore access', 'error');
+                }
+            } catch (error) {
+                console.error('Unrevoke error:', error);
+                showDashboardToast('Error restoring access', 'error');
             }
         }
 

@@ -803,6 +803,15 @@ svg {
     background: #f44336;
 }
 
+.access-card-revoked {
+    border-left: 4px solid #e53935;
+    opacity: 0.85;
+}
+
+.access-card-approved {
+    border-left: 4px solid #4caf50;
+}
+
 .access-expiry-expired {
     color: #f44336;
 }
