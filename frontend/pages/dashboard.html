@@ -1043,7 +1043,9 @@
                 return;
             }
 
-            container.innerHTML = tutors.map(tutor => `
+            container.innerHTML = tutors.map(tutor => {
+                const isPaused = tutor.tutor_status === 'paused';
+                return `
                 <div class="admin-tutor-card approved">
                     <div class="admin-tutor-info">
                         <div class="admin-tutor-name">${tutor.name || 'Unknown'}</div>
@@ -1051,9 +1053,48 @@
                         <div class="admin-tutor-group">Tutorial Group: ${tutor.tutorial_group || 'N/A'}</div>
                         <div class="admin-tutor-notes">${formatExpirySettings(tutor)}</div>
                         ${tutor.tutor_status_notes ? `<div class="admin-tutor-notes">Notes: ${tutor.tutor_status_notes}</div>` : ''}
+                        <div style="margin-top:6px">
+                            <span class="tutor-status-badge tutor-status-${isPaused ? 'paused' : 'approved'}">
+                                ${isPaused ? '⏸ Paused' : '✓ Active'}
+                            </span>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                    <div class="admin-tutor-actions">
+                        <button class="admin-btn ${isPaused ? 'admin-btn-approve tutor-unpause-btn' : 'admin-btn-reject tutor-pause-btn'}" data-id="${tutor.id}">
+                            ${isPaused ? '▶ Unpause' : '⏸ Pause'}
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            container.querySelectorAll('.tutor-pause-btn').forEach(btn => {
+                btn.addEventListener('click', () => toggleTutorPause(btn.dataset.id, 'pause'));
+            });
+            container.querySelectorAll('.tutor-unpause-btn').forEach(btn => {
+                btn.addEventListener('click', () => toggleTutorPause(btn.dataset.id, 'unpause'));
+            });
+        }
+
+        async function toggleTutorPause(tutorId, action) {
+            const token = getAuthToken();
+            if (!token) return;
+            const label = action === 'pause' ? 'pause' : 'unpause';
+            if (!confirm(`Are you sure you want to ${label} this tutor?`)) return;
+            try {
+                const response = await fetch(`${DASHBOARD_API_URL}/admin/tutors/${tutorId}/${action}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                });
+                const result = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    showDashboardToast(result.message || `Tutor ${label}d successfully`, 'success');
+                    await loadAdminData();
+                } else {
+                    showDashboardToast(result.message || `Failed to ${label} tutor`, 'error');
+                }
+            } catch (err) {
+                showDashboardToast(`Error: could not ${label} tutor`, 'error');
+            }
         }
 
         function renderRejectedTutors(tutors) {

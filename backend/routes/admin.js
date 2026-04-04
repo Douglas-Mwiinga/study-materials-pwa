@@ -271,4 +271,46 @@ router.get('/stats', requireAdmin, async (req, res) => {
     }
 });
 
+// =============================================
+// POST /api/admin/tutors/:id/pause
+// =============================================
+router.post('/tutors/:id/pause', requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { data, error } = await supabaseAdmin
+            .from('profiles')
+            .update({ tutor_status: 'paused' })
+            .eq('id', id)
+            .eq('role', 'tutor')
+            .select('id, name, email, tutor_status')
+            .single();
+        if (error) return res.status(500).json({ error: 'Failed to pause tutor', message: error.message });
+        if (!data) return res.status(404).json({ error: 'Tutor not found' });
+        res.json({ success: true, message: 'Tutor paused successfully', tutor: data });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error', message: err.message });
+    }
+});
+
+// =============================================
+// POST /api/admin/tutors/:id/unpause
+// =============================================
+router.post('/tutors/:id/unpause', requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { data, error } = await supabaseAdmin
+            .from('profiles')
+            .update({ tutor_status: 'approved' })
+            .eq('id', id)
+            .eq('role', 'tutor')
+            .select('id, name, email, tutor_status')
+            .single();
+        if (error) return res.status(500).json({ error: 'Failed to unpause tutor', message: error.message });
+        if (!data) return res.status(404).json({ error: 'Tutor not found' });
+        res.json({ success: true, message: 'Tutor unpaused successfully', tutor: data });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error', message: err.message });
+    }
+});
+
 module.exports = router;

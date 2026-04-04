@@ -994,6 +994,22 @@ svg {
     background: #0b7dda;
 }
 
+.tutor-status-badge {
+    display: inline-block;
+    font-size: 0.78em;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 12px;
+}
+.tutor-status-approved {
+    background: #e6f4ea;
+    color: #2d7a3a;
+}
+.tutor-status-paused {
+    background: #fff3e0;
+    color: #e65100;
+}
+
 .dashboard-admin-panel-hidden {
     display: none;
 }
