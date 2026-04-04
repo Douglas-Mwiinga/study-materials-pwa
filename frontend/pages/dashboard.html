@@ -1386,7 +1386,8 @@
                     loadPendingStudents();
                     loadApprovedStudents();
                 } else {
-                    showDashboardToast('Failed to process approval', 'error');
+                    const err = await response.json().catch(() => ({}));
+                    showDashboardToast(err.message || 'Failed to process approval', 'error');
                 }
             } catch (error) {
                 console.error('Approval error:', error);
