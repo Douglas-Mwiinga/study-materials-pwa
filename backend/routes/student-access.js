@@ -1,15 +1,16 @@
 // Middleware to check if user is a tutor or admin
 function requireTutorOrAdmin(req, res, next) {
-    const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
-    const legacyRole = req.user?.role ? [req.user.role] : [];
-    const allRoles = [...new Set([...roles, ...legacyRole])];
-    if (allRoles.includes('tutor') || allRoles.includes('admin')) {
-        return next();
+    const userRoles = [
+        ...(Array.isArray(req.user.roles) ? req.user.roles : []),
+        req.user.role
+    ].filter(Boolean);
+
+    const isTutorOrAdmin = userRoles.includes('tutor') || userRoles.includes('admin');
+    if (!isTutorOrAdmin) {
+        return res.status(403).json({ error: 'Forbidden', message: 'Only tutors or admins can perform this action' });
     }
-    return res.status(403).json({
-        error: 'Forbidden',
-        message: 'Only tutors or admins can access this resource'
-    });
+
+    return next();
 }
 // Student Access Management Routes
 // For tutors to approve/reject student access and manage settings
