@@ -221,7 +221,8 @@ router.get('/', async (req, res) => {
 
         // Restrict to only materials belonging to the student's approved tutorial group
         if (latestApproval.tutorial_group_name) {
-            query = query.eq('tutorial_group', latestApproval.tutorial_group_name);
+            const normalizedGroup = latestApproval.tutorial_group_name.trim().replace(/\s+/g, ' ');
+            query = query.eq('tutorial_group', normalizedGroup);
         }
         // End of student approval check
         }
