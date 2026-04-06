@@ -27,7 +27,13 @@
                     <input type="email" id="email" name="email" placeholder="Enter your email" required>
 
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Create a password" required>
+                    <div style="position:relative;">
+                        <input type="password" id="password" name="password" placeholder="Create a password" required style="padding-right:64px;width:100%;box-sizing:border-box;">
+                        <button type="button" id="togglePasswordBtn"
+                            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#555;font-size:0.85rem;font-weight:600;cursor:pointer;padding:8px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;">
+                            Show
+                        </button>
+                    </div>
 
                     <label for="role">User Role</label>
                     <select id="role" name="role" required>
@@ -71,7 +77,17 @@
     </footer>
     <script type="module" src="../js/auth.js"></script>
     <script>
-        // Dynamic label switching based on user role
+        document.getElementById('togglePasswordBtn').addEventListener('click', function () {
+            const input = document.getElementById('password');
+            if (input.type === 'password') {
+                input.type = 'text';
+                this.textContent = 'Hide';
+            } else {
+                input.type = 'password';
+                this.textContent = 'Show';
+            }
+        });
+
         const roleSelect = document.getElementById('role');
         const nameLabel = document.getElementById('nameLabel');
         const nameInput = document.getElementById('name');

@@ -24,7 +24,13 @@
                     <input type="email" id="email" name="email" placeholder="Enter your email" required>
 
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <div style="position:relative;">
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required style="padding-right:64px;width:100%;box-sizing:border-box;">
+                        <button type="button" id="togglePasswordBtn"
+                            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#555;font-size:0.85rem;font-weight:600;cursor:pointer;padding:8px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;">
+                            Show
+                        </button>
+                    </div>
 
                     <button type="submit" class="login-btn">Log In</button>
                 </form>
@@ -52,6 +58,17 @@
             const fromArray = Array.isArray(user.roles) ? user.roles : [];
             return [...new Set([...fromArray, user.role].filter(Boolean))];
         }
+
+        document.getElementById('togglePasswordBtn').addEventListener('click', function () {
+            const input = document.getElementById('password');
+            if (input.type === 'password') {
+                input.type = 'text';
+                this.textContent = 'Hide';
+            } else {
+                input.type = 'password';
+                this.textContent = 'Show';
+            }
+        });
 
         document.querySelector('.login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
