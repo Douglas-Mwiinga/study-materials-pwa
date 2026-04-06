@@ -49,11 +49,11 @@ router.post('/signup', upload.any(), async (req, res) => {
             });
         }
 
-        // Validate student requires tutorial group
-        if (role === 'student' && !tutorialGroup) {
+        // Validate student requires tutor selection
+        if (role === 'student' && !req.body.tutorId) {
             return res.status(400).json({
-                error: 'Missing tutorial group',
-                message: 'Students must specify which tutorial group they are joining'
+                error: 'Missing tutor selection',
+                message: 'Students must select a tutor from the list'
             });
         }
 
