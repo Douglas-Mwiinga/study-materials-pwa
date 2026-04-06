@@ -55,7 +55,7 @@ function endsWithAny(path, suffixes) {
  * @param {string} tutorialGroup - Tutorial group name (students only)
  * @returns {Promise<Object>} Response data
  */
-async function signup(email, password, role, name, paymentScreenshot, tutorialGroup) {
+async function signup(email, password, role, name, paymentScreenshot, tutorialGroup, tutorId) {
     try {
         const formData = new FormData();
         formData.append('email', email);
@@ -67,6 +67,9 @@ async function signup(email, password, role, name, paymentScreenshot, tutorialGr
         }
         if (tutorialGroup) {
             formData.append('tutorialGroup', tutorialGroup);
+        }
+        if (tutorId) {
+            formData.append('tutorId', tutorId);
         }
 
         const response = await fetch(`${API_BASE}/auth/signup`, {

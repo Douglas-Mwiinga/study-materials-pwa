@@ -172,13 +172,32 @@ router.post('/signup', upload.any(), async (req, res) => {
 
         // Create initial approval record for students
         if (role === 'student') {
+            // Resolve tutor_id and canonical tutorial_group_name from selected tutor
+            let resolvedTutorId = null;
+            let resolvedGroupName = (tutorialGroup || '').trim().replace(/\s+/g, ' ') || null;
+
+            const tutorId = req.body.tutorId || null;
+            if (tutorId) {
+                const { data: tutorProfile } = await supabaseAdmin
+                    .from('profiles')
+                    .select('id, tutorial_group')
+                    .eq('id', tutorId)
+                    .eq('tutor_status', 'approved')
+                    .single();
+
+                if (tutorProfile) {
+                    resolvedTutorId = tutorProfile.id;
+                    resolvedGroupName = (tutorProfile.tutorial_group || '').trim().replace(/\s+/g, ' ');
+                }
+            }
+
             const { error: approvalError } = await supabaseAdmin
                 .from('student_approvals')
                 .insert({
                     student_id: userId,
-                    tutor_id: null,
+                    tutor_id: resolvedTutorId,
                     payment_screenshot_url: paymentScreenshotUrl,
-                    tutorial_group_name: tutorialGroup,
+                    tutorial_group_name: resolvedGroupName,
                     status: 'pending'
                 });
 

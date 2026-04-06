@@ -39,8 +39,16 @@
 
                     <div id="tutorialGroupContainer" class="hidden-section">
                         <label for="tutorialGroup">Tutorial Group Name</label>
-                        <input type="text" id="tutorialGroup" name="tutorialGroup" placeholder="e.g., Math 101, Chemistry Advanced" required>
-                        <small class="help-text">Which tutorial group are you joining?</small>
+                        <input type="text" id="tutorialGroup" name="tutorialGroup" placeholder="e.g., Math 101, Chemistry Advanced">
+                        <small class="help-text">Which tutorial group do you manage?</small>
+                    </div>
+
+                    <div id="tutorSelectContainer" class="hidden-section">
+                        <label for="tutorSelect">Select Your Tutor</label>
+                        <select id="tutorSelect" name="tutorSelect">
+                            <option value="">Loading tutors...</option>
+                        </select>
+                        <small class="help-text">Select the tutor whose group you are joining</small>
                     </div>
 
                     <div id="paymentScreenshotContainer" class="hidden-section">
@@ -72,31 +80,52 @@
         const tutorialGroupContainer = document.getElementById('tutorialGroupContainer');
         const tutorialGroupInput = document.getElementById('tutorialGroup');
 
+        const tutorSelectContainer = document.getElementById('tutorSelectContainer');
+        const tutorSelect = document.getElementById('tutorSelect');
+        let tutorsLoaded = false;
+
+        async function loadTutors() {
+            if (tutorsLoaded) return;
+            try {
+                const res = await fetch('/api/student-access/tutors');
+                const result = await res.json();
+                const tutors = result.tutors || [];
+                if (tutors.length === 0) {
+                    tutorSelect.innerHTML = '<option value="">No tutors available yet</option>';
+                } else {
+                    tutorSelect.innerHTML = '<option value="">-- Select your tutor --</option>' +
+                        tutors.map(t => `<option value="${t.id}">${t.name} (${t.tutorial_group || 'No group'})</option>`).join('');
+                }
+                tutorsLoaded = true;
+            } catch (e) {
+                tutorSelect.innerHTML = '<option value="">Failed to load tutors</option>';
+            }
+        }
+
         function updateNameLabel() {
             const selectedRole = roleSelect.value;
             if (selectedRole === 'tutor') {
-                nameLabel.textContent = 'Full Name';
-                nameInput.placeholder = 'Enter your full name';
                 paymentScreenshotContainer.style.display = 'none';
                 paymentScreenshotInput.required = false;
                 tutorialGroupContainer.style.display = 'block';
                 tutorialGroupInput.required = true;
-                document.querySelector('#tutorialGroupContainer small').textContent = 'Which tutorial group do you manage?';
+                tutorSelectContainer.style.display = 'none';
+                tutorSelect.required = false;
             } else if (selectedRole === 'student') {
-                nameLabel.textContent = 'Full Name';
-                nameInput.placeholder = 'Enter your full name';
                 paymentScreenshotContainer.style.display = 'block';
                 paymentScreenshotInput.required = true;
-                tutorialGroupContainer.style.display = 'block';
-                tutorialGroupInput.required = true;
-                document.querySelector('#tutorialGroupContainer small').textContent = 'Which tutorial group are you joining?';
+                tutorialGroupContainer.style.display = 'none';
+                tutorialGroupInput.required = false;
+                tutorSelectContainer.style.display = 'block';
+                tutorSelect.required = true;
+                loadTutors();
             } else {
-                nameLabel.textContent = 'Full Name';
-                nameInput.placeholder = 'Enter your full name';
                 paymentScreenshotContainer.style.display = 'none';
                 paymentScreenshotInput.required = false;
                 tutorialGroupContainer.style.display = 'none';
                 tutorialGroupInput.required = false;
+                tutorSelectContainer.style.display = 'none';
+                tutorSelect.required = false;
             }
         }
 
@@ -115,6 +144,7 @@
             const role = document.getElementById('role').value;
             const paymentScreenshot = document.getElementById('paymentScreenshot').files[0] || null;
             const tutorialGroup = document.getElementById('tutorialGroup').value || null;
+            const selectedTutorId = document.getElementById('tutorSelect').value || null;
             const errorDiv = document.getElementById('errorMessage');
             const submitBtn = document.querySelector('.login-btn');
             
@@ -136,11 +166,16 @@
                 return;
             }
 
-            // Validate tutorial group for students and tutors
-            if ((role === 'student' || role === 'tutor') && !tutorialGroup) {
-                errorDiv.textContent = role === 'student' 
-                    ? 'Students must specify which tutorial group they are joining'
-                    : 'Tutors must specify which tutorial group they manage';
+            // Validate tutor selection for students
+            if (role === 'student' && !selectedTutorId) {
+                errorDiv.textContent = 'Please select your tutor from the dropdown';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Validate tutorial group for tutors
+            if (role === 'tutor' && !tutorialGroup) {
+                errorDiv.textContent = 'Tutors must specify which tutorial group they manage';
                 errorDiv.style.display = 'block';
                 return;
             }
@@ -150,7 +185,7 @@
             submitBtn.textContent = 'Signing up...';
             
             try {
-                await signup(email, password, role, name, paymentScreenshot, tutorialGroup);
+                await signup(email, password, role, name, paymentScreenshot, tutorialGroup, selectedTutorId);
                 
                 // Success - redirect to login
                 alert('Account created successfully! Please log in.');

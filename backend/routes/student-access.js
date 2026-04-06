@@ -216,11 +216,12 @@ router.get('/pending', requireAuth, requireTutorOrAdmin, async (req, res) => {
                     data: []
                 });
             }
+            const normalizedGroup = (userProfile.tutorial_group || '').trim().replace(/\s+/g, ' ');
             const { data, error } = await supabaseAdmin
                 .from('student_approvals')
                 .select('id, student_id, payment_screenshot_url, status, created_at, tutorial_group_name, tutor_id')
                 .eq('status', 'pending')
-                .eq('tutorial_group_name', userProfile.tutorial_group)
+                .or(`tutor_id.eq.${userId},tutorial_group_name.eq.${normalizedGroup}`)
                 .order('created_at', { ascending: true });
             if (error) {
                 return res.status(500).json({
@@ -1037,6 +1038,27 @@ router.get('/check-access', requireAuth, async (req, res) => {
             error: 'Internal server error',
             message: error.message
         });
+    }
+});
+
+// =============================================
+// GET /api/student-access/tutors (public)
+// List approved tutors for student signup dropdown
+// =============================================
+router.get('/tutors', async (req, res) => {
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('profiles')
+            .select('id, name, tutorial_group')
+            .eq('role', 'tutor')
+            .in('tutor_status', ['approved'])
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        res.json({ success: true, tutors: data || [] });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch tutors', message: err.message });
     }
 });
 
