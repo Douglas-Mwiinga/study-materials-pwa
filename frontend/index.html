@@ -8,8 +8,18 @@
   <script>
     window.location.replace('/pages/login.html');
   </script>
-  <!-- Vercel Analytics: replace REPLACE_WITH_VERCEL_WEBSITE_ID with your site id -->
-  <script defer data-website-id="REPLACE_WITH_VERCEL_WEBSITE_ID" src="https://static.vercel-insights.com/script.js"></script>
+  <script>
+    (function(){
+      var id = 'REPLACE_WITH_VERCEL_WEBSITE_ID';
+      if (!id || id === 'REPLACE_WITH_VERCEL_WEBSITE_ID') return;
+      if (location.hostname === 'localhost') return;
+      var s = document.createElement('script');
+      s.defer = true;
+      s.setAttribute('data-website-id', id);
+      s.src = 'https://static.vercel-insights.com/script.js';
+      document.head.appendChild(s);
+    })();
+  </script>
 </head>
 <body>
   <p>Redirecting to <a href="/pages/login.html">/pages/login.html</a>...</p>
