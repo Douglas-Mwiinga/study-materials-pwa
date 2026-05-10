@@ -608,6 +608,21 @@ footer {
     box-shadow: 0 2px 8px rgba(0,0,0,0.03);
 }
 
+.dashboard-feedback-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.feedback-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 8px;
+    min-height: 120px;
+}
+
 .dashboard-access-management,
 .dashboard-settings {
     background: #ffffff;
