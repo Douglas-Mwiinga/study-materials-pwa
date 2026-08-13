@@ -1393,22 +1393,31 @@
                     return;
                 }
 
-                pendingList.innerHTML = pending.map(item => `
-                    <div class="access-card access-card-pending">
-                        <div class="access-card-header">
-                            <strong>${item.profiles?.name || 'Student'}</strong>
-                            <small class="access-date">${new Date(item.created_at).toLocaleDateString()}</small>
+                pendingList.innerHTML = pending.map(item => {
+                    const studentProfile = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles || {};
+                    const studentName = studentProfile?.name || 'Student';
+                    const studentEmail = studentProfile?.email || 'Email unavailable';
+                    const paymentLink = item.payment_screenshot_url
+                        ? `<a href="${item.payment_screenshot_url}" target="_blank" class="access-link">View Screenshot</a>`
+                        : 'No screenshot';
+
+                    return `
+                        <div class="access-card access-card-pending">
+                            <div class="access-card-header">
+                                <strong>${studentName}</strong>
+                                <small class="access-date">${new Date(item.created_at).toLocaleDateString()}</small>
+                            </div>
+                            <div class="access-meta">
+                                Email: ${studentEmail} <br>
+                                Payment: ${paymentLink}
+                            </div>
+                            <div class="access-actions">
+                                <button data-action="approve" data-id="${item.id}" class="approval-btn access-btn access-btn-approve">Approve</button>
+                                <button data-action="reject" data-id="${item.id}" class="approval-btn access-btn access-btn-reject">Reject</button>
+                            </div>
                         </div>
-                        <div class="access-meta">
-                            Email: ${item.profiles?.email} <br>
-                            Payment: <a href="${item.payment_screenshot_url}" target="_blank" class="access-link">View Screenshot</a>
-                        </div>
-                        <div class="access-actions">
-                            <button data-action="approve" data-id="${item.id}" class="approval-btn access-btn access-btn-approve">Approve</button>
-                            <button data-action="reject" data-id="${item.id}" class="approval-btn access-btn access-btn-reject">Reject</button>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
 
                 // Add event listeners
                 pendingList.querySelectorAll('.approval-btn').forEach(btn => {

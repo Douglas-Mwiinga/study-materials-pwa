@@ -199,7 +199,16 @@ router.get('/pending', requireAuth, requireTutorOrAdmin, async (req, res) => {
             // Admin: get all pending approvals
             const { data, error } = await supabaseAdmin
                 .from('student_approvals')
-                .select('id, student_id, payment_screenshot_url, status, created_at, tutorial_group_name, tutor_id')
+                .select(`
+                    id,
+                    student_id,
+                    payment_screenshot_url,
+                    status,
+                    created_at,
+                    tutorial_group_name,
+                    tutor_id,
+                    profiles:profiles!student_approvals_student_id_fkey(id, name, email)
+                `)
                 .eq('status', 'pending')
                 .order('created_at', { ascending: true });
             if (error) {
@@ -219,7 +228,16 @@ router.get('/pending', requireAuth, requireTutorOrAdmin, async (req, res) => {
             const normalizedGroup = (userProfile.tutorial_group || '').trim().replace(/\s+/g, ' ');
             const { data, error } = await supabaseAdmin
                 .from('student_approvals')
-                .select('id, student_id, payment_screenshot_url, status, created_at, tutorial_group_name, tutor_id')
+                .select(`
+                    id,
+                    student_id,
+                    payment_screenshot_url,
+                    status,
+                    created_at,
+                    tutorial_group_name,
+                    tutor_id,
+                    profiles:profiles!student_approvals_student_id_fkey(id, name, email)
+                `)
                 .eq('status', 'pending')
                 .or(`tutor_id.eq.${userId},tutorial_group_name.eq.${normalizedGroup}`)
                 .order('created_at', { ascending: true });
