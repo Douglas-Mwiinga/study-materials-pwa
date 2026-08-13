@@ -36,11 +36,15 @@ const requireAdmin = async (req, res, next) => {
     try {
         const { data: profile, error } = await supabaseAdmin
             .from('profiles')
-            .select('role')
+            .select('role, roles')
             .eq('id', req.user.id)
             .single();
 
-        if (error || profile.role !== 'admin') {
+        const roles = Array.isArray(profile?.roles) ? profile.roles : [];
+        const legacyRole = profile?.role ? [profile.role] : [];
+        const allRoles = [...new Set([...roles, ...legacyRole])].filter(Boolean);
+
+        if (error || !profile || !allRoles.includes('admin')) {
             return res.status(403).json({
                 error: 'Forbidden',
                 message: 'Admin access required'

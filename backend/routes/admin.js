@@ -27,7 +27,7 @@ async function requireAdmin(req, res, next) {
 
         const roles = Array.isArray(user?.roles) ? user.roles : [];
         const legacyRole = user?.role ? [user.role] : [];
-        const allRoles = [...new Set([...roles, ...legacyRole])];
+        const allRoles = [...new Set([...roles, ...legacyRole])].filter(Boolean);
         if (error || !user || !allRoles.includes('admin')) {
             return res.status(403).json({
                 error: 'Forbidden',
